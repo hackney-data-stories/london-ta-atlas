@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>London Temporary Accommodation Atlas</title>
+<style>
+  :root {
+    --ink:#1b1b1b; --mute:#666; --line:#e3e3e3; --bg:#fff;
+    --accent:#0b6b57; --warn:#a8322d;
+  }
+  html,body,#map{height:100%;margin:0;padding:0}
+  html,body{overflow:hidden}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;color:var(--ink)}
+  .pane{
+    position:absolute;top:12px;z-index:10;background:rgba(255,255,255,.975);
+    border:1px solid var(--line);border-radius:8px;
+    box-shadow:0 2px 14px rgba(0,0,0,.10);
+    max-height:calc(100% - 24px);overflow-y:auto;font-size:13px;line-height:1.45}
+  #panel{left:12px;width:330px}
+  #detail{right:12px;width:370px;display:none}
+  .pane header{padding:13px 15px 10px;border-bottom:1px solid var(--line)}
+  .pane h1{margin:0;font-size:16px;font-weight:650;letter-spacing:-.01em}
+  .pane header p{margin:5px 0 0;color:var(--mute);font-size:11.5px}
+  .pane section{padding:11px 15px;border-bottom:1px solid var(--line)}
+  .pane section:last-child{border-bottom:0}
+  h2{margin:0 0 7px;font-size:10.5px;text-transform:uppercase;color:var(--mute);
+     letter-spacing:.06em;font-weight:650}
+  select{width:100%;padding:7px 8px;font-size:13px;border:1px solid #ccc;
+         border-radius:5px;background:#fff;color:var(--ink);font-family:inherit}
+  .prov{margin:8px 0 0;font-size:11px;color:var(--mute);line-height:1.4}
+  .legend{display:flex;align-items:center;gap:0;margin:8px 0 5px}
+  .legend i{flex:1;height:11px;display:block}
+  .legend i:first-child{border-radius:3px 0 0 3px}
+  .legend i:last-child{border-radius:0 3px 3px 0}
+  .legend-lab{display:flex;justify-content:space-between;font-size:10.5px;color:var(--mute)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  td{padding:3px 0;vertical-align:top}
+  td.k{color:var(--mute);padding-right:10px}
+  td.v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+  .big{font-size:26px;font-weight:680;letter-spacing:-.02em;line-height:1.1}
+  .big span{font-size:12px;font-weight:400;color:var(--mute)}
+  .bar{height:9px;background:#eee;border-radius:5px;overflow:hidden;display:flex;margin:5px 0 2px}
+  .bar b{display:block;height:100%}
+  .flag{display:inline-block;padding:2px 7px;border-radius:11px;font-size:10.5px;
+        font-weight:650;margin:0 4px 4px 0}
+  .flag.ok{background:#e6f2ee;color:var(--accent)}
+  .flag.no{background:#fbeceb;color:var(--warn)}
+  .flag.n{background:#f0f0f0;color:#555}
+  .note{font-size:11px;color:var(--mute);margin-top:6px;line-height:1.4}
+  button.x{position:absolute;top:11px;right:12px;border:0;background:transparent;
+           font-size:19px;color:#999;cursor:pointer;line-height:1;padding:0}
+  a{color:var(--accent)}
+  details{margin-top:7px}
+  summary{cursor:pointer;font-size:11.5px;color:var(--mute)}
+  .rank{font-size:11.5px;color:var(--mute);margin-top:5px}
+  #map{background:#cdd6d8}
+  #map svg{width:100%;height:100%;display:block}
+  #map path{stroke:#5c6b66;stroke-width:.6;stroke-opacity:.55;cursor:pointer;
+            transition:fill .18s}
+  #map path:hover{stroke:#111;stroke-width:1.6;stroke-opacity:1}
+  #map path.sel{stroke:#111;stroke-width:2.2;stroke-opacity:1}
+  #tip{position:absolute;z-index:20;pointer-events:none;display:none;
+       background:rgba(20,20,20,.93);color:#fff;padding:7px 10px;border-radius:6px;
+       font-size:12.5px;line-height:1.35;max-width:230px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  #tip b{font-weight:650}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="tip"></div>
+
+<div class="pane" id="panel">
+  <header>
+    <h1>London Temporary Accommodation Atlas</h1>
+    <p>33 boroughs · every figure from public data · <span id="asof"></span></p>
+  </header>
+  <section>
+    <h2>Show</h2>
+    <select id="metric"></select>
+    <div class="legend" id="legend"></div>
+    <div class="legend-lab"><span id="lo"></span><span id="hi"></span></div>
+    <p class="prov" id="prov"></p>
+  </section>
+  <section>
+    <h2>Borough</h2>
+    <select id="pick"><option value="">Choose a borough…</option></select>
+  </section>
+  <section id="summary"></section>
+  <section>
+    <h2>Why this is a shared problem</h2>
+    <div id="shared"></div>
+  </section>
+  <section>
+    <h2>Method and confidence</h2>
+    <p class="prov">
+      Household counts, length of stay, children and out-of-area placements are
+      MHCLG statutory returns — measured, not modelled. Nightly rates are
+      <em>decoded</em> from councils' own published payment files and remain
+      inference until an officer confirms one against an invoice.
+    </p>
+    <details>
+      <summary>Three things this map deliberately will not do</summary>
+      <p class="prov">
+        <b>It will not rank boroughs on total spend.</b> Each borough's
+        published file captures a different and unknowable share of its bill —
+        cost per household-night ranges from £3 to £107, which measures
+        publication practice, not procurement.<br><br>
+        <b>It will not compare an operator's price between boroughs</b> unless
+        both payments sit under the same homelessness label. Ungated, the same
+        firm's payments mix homelessness lets with children's semi-independent
+        placements — different products at different prices.<br><br>
+        <b>It will not show a rate where a borough batches its invoices.</b>
+        A payment covering many units cannot be divided into a nightly rate.
+      </p>
+    </details>
+    <p class="prov" id="sources"></p>
+  </section>
+</div>
+
+<div class="pane" id="detail">
+  <button class="x" onclick="closeDetail()">×</button>
+  <div id="detailBody"></div>
+</div>
+
+<script>
+// Most metrics here mean "worse when higher" — stay, out-of-area,
+// six-week breaches — so they use a warm sequential. The one metric
+// where higher is better (leased share) gets a green one.
+const RAMP_BAD  = ['#fde9d4','#fbd0a5','#f7b076','#ee8a51','#dd6337','#bd4326','#8f2a19'];
+const RAMP_GOOD = ['#e6efe9','#c2ddd0','#99c7b3','#6cae94','#438f76','#256e59','#0f5040'];
+const fmt = n => n==null ? '—' : n.toLocaleString('en-GB',{maximumFractionDigits:0});
+const pc  = n => n==null ? '—' : n.toFixed(1).replace(/\.0$/,'')+'%';
+const gbp = n => n==null ? '—' : '£'+n.toLocaleString('en-GB',{maximumFractionDigits:0});
+
+const METRICS = [
+  { id:'stay_nightly', label:'Median stay in nightly-paid accommodation (days)',
+    unit:'days', prov:'MHCLG table TA7, 31 March 2026. Measured.',
+    get:b => last(b.stay && b.stay.nightly) },
+  { id:'stay_change', label:'Change in that median stay, Jun 2025 → Mar 2026',
+    unit:'%', prov:'MHCLG table TA7, four quarters. Measured.',
+    get:b => { const s=b.stay&&b.stay.nightly; if(!s) return null;
+               const k=Object.keys(s).sort(); const f=s[k[0]],l=s[k[k.length-1]];
+               return (f&&l)? (l-f)/f*100 : null; }, fmt:pc },
+  { id:'nightly_share', label:'Share of TA households in nightly-paid accommodation',
+    unit:'%', prov:'MHCLG table TA1, 31 March 2026. Measured.',
+    get:b => b.households && b.households.total ? 100*b.households.nightly/b.households.total : null,
+    fmt:pc },
+  { id:'leased_share', label:'Share of TA households in private sector leasing',
+    unit:'%', prov:'MHCLG table TA1. The cheaper arrangement — higher is better.',
+    get:b => b.households && b.households.total ? 100*b.households.leased/b.households.total : null,
+    fmt:pc, good:true },
+  { id:'ta_total', label:'Households in temporary accommodation',
+    unit:'households', prov:'MHCLG table TA1, 31 March 2026. Measured.',
+    get:b => b.households && b.households.total },
+  { id:'children', label:'Children (under 18) in temporary accommodation',
+    unit:'children', prov:'MHCLG table TA8, 31 March 2026. Measured.',
+    get:b => b.children && b.children.under18 },
+  { id:'kids_5yr', label:'Families with children 5+ years in nightly-paid accommodation',
+    unit:'families', prov:'MHCLG table TA4c, 31 March 2026. Measured.',
+    get:b => b.bands_children && b.bands_children.nightly ? b.bands_children.nightly[4] : null },
+  { id:'sixweek', label:'B&B placements with children beyond the 6-week legal limit',
+    unit:'families', prov:'MHCLG table TA1. Suitability of Accommodation Order 2003, art. 4.',
+    get:b => b.bb_six_week ? b.bb_six_week.over_6_weeks : null },
+  { id:'ooa', label:'Share of households placed outside the borough',
+    unit:'%', prov:'MHCLG table TA9, 31 March 2026. Measured.',
+    get:b => b.out_of_area && b.out_of_area.pct, fmt:pc },
+  { id:'rate_bb', label:'Decoded nightly rate — bed and breakfast',
+    unit:'£/night', prov:'Decoded from the borough’s own payment file. INFERENCE. Blank where the borough batches invoices or publishes no B&B label.',
+    get:b => b.rates && b.rates.bb ? b.rates.bb.rate : null,
+    fmt:gbp },
+  { id:'rate_leased', label:'Cost of a leased unit per night',
+    unit:'£/night', prov:'Median monthly payment ÷ 30.44. INFERENCE. Blank where unusable.',
+    get:b => b.rates && b.rates.leased ? b.rates.leased.rate : null, fmt:gbp },
+];
+
+function last(o){ if(!o) return null; const k=Object.keys(o).sort(); return o[k[k.length-1]]; }
+
+// openSlug is declared here rather than beside showDetail because
+// paint() reads it, and the standalone build calls init() synchronously
+// at parse time — a `let` further down the file is not yet initialised.
+let DATA, GEO, cur = METRICS[0], svg, PATHS = {}, openSlug = null;
+
+Promise.all([
+  fetch('ta_map.json').then(r=>r.json()),
+  fetch('london_boroughs.geojson').then(r=>r.json())
+]).then(([d,g])=>{ DATA=d; GEO=g; init(); });
+
+// Web Mercator, fitted to the bounding box of the 33 boroughs. No tiles,
+// no map library: the page depends on nothing but its own two data files.
+// returned in degree-equivalent units so x (longitude, degrees) and y
+// share a scale — mixing raw degrees with Mercator radians flattens
+// London into a stripe
+function mercY(lat){ return 180/Math.PI * Math.log(Math.tan(Math.PI/4 + lat*Math.PI/360)); }
+
+function project(){
+  let x1=999,y1=999,x2=-999,y2=-999;
+  GEO.features.forEach(f=>eachRing(f,r=>r.forEach(([x,y])=>{
+    const my=mercY(y);
+    x1=Math.min(x1,x); x2=Math.max(x2,x); y1=Math.min(y1,my); y2=Math.max(y2,my);
+  })));
+  const W=1000, pad=8;
+  const sc=(W-2*pad)/(x2-x1), H=Math.round((y2-y1)*sc+2*pad);
+  return {W,H,to:([x,y])=>[ (x-x1)*sc+pad, (y2-mercY(y))*sc+pad ]};
+}
+
+function eachRing(f,cb){
+  const g=f.geometry, ps = g.type==='Polygon'?[g.coordinates]:g.coordinates;
+  ps.forEach(poly=>poly.forEach(cb));
+}
+
+function init(){
+  document.getElementById('asof').textContent = 'data to 31 March 2026';
+  const sel = document.getElementById('metric');
+  METRICS.forEach((m,i)=>{ const o=document.createElement('option');
+    o.value=i; o.textContent=m.label; sel.appendChild(o); });
+  sel.onchange = () => { cur = METRICS[+sel.value]; paint(); };
+
+  const pick = document.getElementById('pick');
+  Object.entries(DATA.boroughs)
+    .sort((a,b)=>a[1].name.localeCompare(b[1].name))
+    .forEach(([slug,b])=>{ const o=document.createElement('option');
+      o.value=slug; o.textContent=b.name; pick.appendChild(o); });
+  pick.onchange = () => pick.value ? showDetail(pick.value) : closeDetail();
+
+  document.getElementById('sources').innerHTML =
+    'Sources: ' + DATA.london.sources.join('; ') + '. All Open Government Licence.';
+
+  GEO.features.forEach(f=>{
+    const b = DATA.boroughs[f.properties.slug] || {};
+    METRICS.forEach(m=>{ const v=m.get(b); f.properties[m.id] = (v==null?null:+v); });
+  });
+
+  const P = project();
+  const ns='http://www.w3.org/2000/svg';
+  svg = document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox',`0 0 ${P.W} ${P.H}`);
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  const tip = document.getElementById('tip');
+  GEO.features.forEach(f=>{
+    let d='';
+    eachRing(f, r => { d += 'M' + r.map(c=>P.to(c).map(n=>n.toFixed(1)).join(' ')).join('L') + 'Z'; });
+    const p = document.createElementNS(ns,'path');
+    p.setAttribute('d', d);
+    p.dataset.slug = f.properties.slug;
+    p.addEventListener('mousemove', e=>{
+      const v = f.properties[cur.id], fm = cur.fmt||fmt;
+      tip.innerHTML = `<b>${f.properties.name}</b><br>${cur.label}<br><b>${v==null?'no data':fm(v)}</b>`;
+      tip.style.display='block';
+      tip.style.left = Math.min(e.clientX+14, innerWidth-250)+'px';
+      tip.style.top  = (e.clientY+14)+'px';
+    });
+    p.addEventListener('mouseleave', ()=>{ tip.style.display='none'; });
+    p.addEventListener('click', ()=>showDetail(f.properties.slug));
+    PATHS[f.properties.slug]=p;
+    svg.appendChild(p);
+  });
+  document.getElementById('map').appendChild(svg);
+  paint();
+  summary();
+}
+
+function paint(){
+  const RAMP = cur.good ? RAMP_GOOD : RAMP_BAD;
+  const vals = GEO.features.map(f=>f.properties[cur.id]).filter(v=>v!=null).sort((a,b)=>a-b);
+  if(!vals.length) return;
+  const stops=[];
+  for(let i=1;i<RAMP.length;i++){
+    const v=vals[Math.floor(vals.length*i/RAMP.length)];
+    if(!stops.length || v>stops[stops.length-1]) stops.push(v);
+  }
+  const colour = v => {
+    if(v==null) return '#b9c2c4';
+    let i=0; while(i<stops.length && v>=stops[i]) i++;
+    return RAMP[Math.min(i,RAMP.length-1)];
+  };
+  GEO.features.forEach(f=>{
+    const p=PATHS[f.properties.slug];
+    if(p) p.setAttribute('fill', colour(f.properties[cur.id]));
+  });
+  const f = cur.fmt||fmt;
+  document.getElementById('legend').innerHTML =
+    RAMP.slice(0,stops.length+1).map(c=>`<i style="background:${c}"></i>`).join('')
+    + '<i style="background:#b9c2c4;max-width:18px" title="no data"></i>';
+  document.getElementById('lo').textContent = f(vals[0]);
+  document.getElementById('hi').textContent = f(vals[vals.length-1]) + '   ·  grey = no data';
+  document.getElementById('prov').innerHTML =
+    cur.prov + (cur.good ? ' <b>Darker is better here.</b>' : '');
+  if(openSlug) showDetail(openSlug);
+}
+
+function summary(){
+  const B = Object.values(DATA.boroughs);
+  const sum = k => B.reduce((a,b)=>a+(k(b)||0),0);
+  const tot = sum(b=>b.households&&b.households.total);
+  const nightly = sum(b=>b.households&&b.households.nightly);
+  const kids = sum(b=>b.children&&b.children.under18);
+  const ooa = sum(b=>b.out_of_area&&b.out_of_area.total);
+  const sixw = sum(b=>b.bb_six_week&&b.bb_six_week.over_6_weeks);
+  const k5 = sum(b=>b.bands_children&&b.bands_children.nightly?b.bands_children.nightly[4]:0);
+  document.getElementById('summary').innerHTML = `
+    <h2>London, 31 March 2026</h2>
+    <div class="big">${fmt(tot)}<span> households in temporary accommodation</span></div>
+    <table style="margin-top:9px">
+      <tr><td class="k">in nightly-paid accommodation</td><td class="v">${fmt(nightly)} (${pc(100*nightly/tot)})</td></tr>
+      <tr><td class="k">children under 18</td><td class="v">${fmt(kids)}</td></tr>
+      <tr><td class="k">placed outside their borough</td><td class="v">${fmt(ooa)} (${pc(100*ooa/tot)})</td></tr>
+      <tr><td class="k">families 5+ years in nightly-paid</td><td class="v">${fmt(k5)}</td></tr>
+      <tr><td class="k">B&amp;B with children past 6 weeks</td><td class="v" style="color:var(--warn)">${fmt(sixw)}</td></tr>
+    </table>`;
+
+  const or = DATA.london.operator_rates;
+  let opHtml = '';
+  for(const [k,v] of Object.entries(or)){
+    const rows = Object.entries(v).sort((a,b)=>b[1].median-a[1].median);
+    opHtml += `<p class="note" style="margin-top:4px"><b>${k}</b>: ` +
+      rows.map(([b,r])=>`${title(b)} <b>${gbp(r.median)}</b>`).join(' · ') + '</p>';
+  }
+  const rb = Object.entries(DATA.boroughs)
+    .filter(([,b])=>b.rates&&b.rates.bb&&b.rates.bb.rate)
+    .map(([s,b])=>[s,b.rates.bb.rate]).sort((a,b)=>b[1]-a[1]);
+  const rl = Object.entries(DATA.boroughs)
+    .filter(([,b])=>b.rates&&b.rates.leased&&b.rates.leased.rate&&!b.rates.leased.mislabelled)
+    .map(([s,b])=>[s,b.rates.leased.rate]).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('shared').innerHTML = `
+    <p class="note" style="margin-top:0">Boroughs buy the same thing at very
+    different prices, and none of them can see the others' figures.</p>
+    <p class="note"><b>Bed &amp; breakfast, per night</b> — same labelled
+    product: ${rb.map(([s,v])=>`${title(s)} <b>${gbp(v)}</b>`).join(' · ')}</p>
+    <p class="note"><b>A leased unit, per night</b> — the cheaper arrangement:
+    ${rl.map(([s,v])=>`${title(s)} <b>${gbp(v)}</b>`).join(' · ')}</p>
+    ${opHtml ? '<p class="note" style="margin-bottom:0"><b>The one operator comparison that survives a like-for-like test:</b></p>'+opHtml : ''}
+    <p class="note"><b>Four boroughs already share a procurement system.</b>
+    Waltham Forest, Redbridge, Enfield and Newham run one dynamic purchasing
+    system between them, with common accreditation. It was built without the
+    Mayor of London.</p>`;
+}
+
+function title(s){ return (DATA.boroughs[s]||{}).name || s; }
+
+function closeDetail(){
+  openSlug=null;
+  document.getElementById('detail').style.display='none';
+  document.getElementById('pick').value='';
+  Object.values(PATHS).forEach(p=>p.classList.remove('sel'));
+}
+
+function showDetail(slug){
+  const b = DATA.boroughs[slug]; if(!b) return;
+  openSlug = slug;
+  Object.values(PATHS).forEach(p=>p.classList.remove('sel'));
+  if(PATHS[slug]){ PATHS[slug].classList.add('sel'); PATHS[slug].parentNode.appendChild(PATHS[slug]); }
+  document.getElementById('pick').value = slug;
+  const h = b.households||{}, oa = b.out_of_area||{}, sw = b.bb_six_week||{};
+  const stayN = b.stay && b.stay.nightly;
+  const qk = stayN ? Object.keys(stayN).sort() : [];
+  const first = qk.length? stayN[qk[0]] : null, lastv = qk.length? stayN[qk[qk.length-1]] : null;
+  const mixOrder = [['nightly','Nightly-paid','#12503f'],['leased','Leased','#74b09d'],
+                    ['bb','B&amp;B','#a8322d'],['hostel','Hostels','#c9a227'],
+                    ['la_ha','Council/HA stock','#9aa5a0'],['other','Other','#ddd']];
+  const totalHH = h.total||0;
+  const bar = mixOrder.map(([k,,c])=> h[k] ? `<b style="width:${100*h[k]/totalHH}%;background:${c}"></b>`:'').join('');
+  const mixRows = mixOrder.filter(([k])=>h[k]).map(([k,lab,c])=>
+    `<tr><td class="k"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${c};margin-right:6px"></span>${lab}</td>
+     <td class="v">${fmt(h[k])} <span style="color:var(--mute);font-weight:400">${pc(100*h[k]/totalHH)}</span></td></tr>`).join('');
+
+  const bands = b.bands && b.bands.nightly;
+  const bandTot = bands ? bands.reduce((a,c)=>a+c,0) : 0;
+  const bandLab = ['&lt;6m','6m–1y','1–2y','2–5y','5y+'];
+
+  const NM = {nightly:'Nightly self-contained',leased:'Leased',bb:'Bed &amp; breakfast',hostel:'Hostel'};
+  let rateRows='', rateSkip=[];
+  for(const [k,v] of Object.entries(b.rates||{})){
+    if(v.rate==null){ rateSkip.push(NM[k]||k); continue; }
+    rateRows += `<tr><td class="k">${NM[k]||k}${v.mislabelled?
+      ' <span class="flag no" style="margin:0">priced per night — not a lease</span>':''}` +
+      `<div class="note" style="margin-top:1px">${v.basis} · ${fmt(v.n_payments)} payments</div></td>` +
+      `<td class="v">${gbp(v.rate)}</td></tr>`;
+  }
+
+  const ad = b.adam||{};
+  const flags = [
+    ad.on_platform ? `<span class="flag ok">On the ADAM platform (${ad.vehicle})</span>` : '',
+    ad.wren ? '<span class="flag ok">WREN shared DPS</span>' : '',
+    ad.pays_through ? '<span class="flag n">Pays suppliers through the platform — they are invisible in its published spend</span>' : '',
+    sw.over_6_weeks>0 ? `<span class="flag no">${fmt(sw.over_6_weeks)} families in B&amp;B past the 6-week legal limit</span>` : '',
+    (sw.bb>0 && sw.with_children===0) ? '<span class="flag ok">No families with children placed in B&amp;B</span>' : '',
+  ].filter(Boolean).join('');
+
+  document.getElementById('detailBody').innerHTML = `
+    <header><h1>${b.name}</h1><p>Temporary accommodation, 31 March 2026</p></header>
+    <section>
+      <div class="big">${fmt(h.total)}<span> households · ${fmt((b.children||{}).under18)} children</span></div>
+      <div class="bar">${bar}</div>
+      <table>${mixRows}</table>
+    </section>
+    ${flags?`<section>${flags}</section>`:''}
+    <section>
+      <h2>How long people stay</h2>
+      <table>
+        <tr><td class="k">Median stay, nightly-paid</td><td class="v">${fmt(lastv)} days</td></tr>
+        ${first&&lastv?`<tr><td class="k">Change since Jun 2025</td><td class="v" style="color:${lastv>first?'var(--warn)':'var(--accent)'}">${lastv>first?'+':''}${pc(100*(lastv-first)/first)}</td></tr>`:''}
+        <tr><td class="k">Median stay, leased</td><td class="v">${fmt(last(b.stay&&b.stay.leased))} days</td></tr>
+      </table>
+      ${bands?`<div class="note" style="margin-top:8px">Time already spent in nightly-paid accommodation</div>
+      <table>${bands.map((v,i)=>`<tr><td class="k">${bandLab[i]}</td><td class="v">${fmt(v)} <span style="color:var(--mute);font-weight:400">${pc(100*v/bandTot)}</span></td></tr>`).join('')}</table>`:''}
+    </section>
+    <section>
+      <h2>Placed outside the borough</h2>
+      <div class="big">${pc(oa.pct)}<span> ${fmt(oa.total)} households</span></div>
+      ${oa.by_type?`<table style="margin-top:6px">${Object.entries(oa.by_type).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+        `<tr><td class="k">${({nightly:'nightly-paid',leased:'leased',bb:'B&amp;B',hostel:'hostel',la_ha:'council/HA'})[k]||k}</td><td class="v">${fmt(v)}</td></tr>`).join('')}</table>`:''}
+    </section>
+    ${rateRows?`<section><h2>What it pays per night <span style="font-weight:400;text-transform:none">— inference</span></h2>
+      <table>${rateRows}</table>
+      <p class="note">Decoded from this borough's own published payments. Not
+      confirmed against an invoice.${rateSkip.length?' No usable figure for '+
+      rateSkip.join(', ').toLowerCase()+': this borough batches its invoices, so a payment covers many units.':''}</p></section>`
+      : (rateSkip.length?`<section><h2>What it pays per night</h2><p class="note">No usable
+      figure. ${b.name} batches its invoices, so a single payment covers many units and cannot
+      be divided into a nightly rate.</p></section>`:'')}
+    <section>
+      <h2>Published spend</h2>
+      <table>
+        <tr><td class="k">Accommodation payments a year</td><td class="v">${b.spend.annual_all_accom?gbp(b.spend.annual_all_accom):'—'}</td></tr>
+        ${b.spend.redacted_share?`<tr><td class="k">Paid to unnamed recipients</td><td class="v">${pc(b.spend.redacted_share)}</td></tr>`:''}
+      </table>
+      <p class="note">${b.spend.confidence}</p>
+    </section>`;
+  document.getElementById('detail').style.display='block';
+  document.getElementById('detail').scrollTop=0;
+}
+</script>
+</body>
+</html>
