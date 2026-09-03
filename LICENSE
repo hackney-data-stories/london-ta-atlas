@@ -19,12 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-THE DATA IS NOT COVERED BY THE ABOVE.
-
-The contents of public/ta_map.json and public/london_boroughs.geojson are
-derived from public sector information licensed under the Open Government
-Licence v3.0, and remain subject to it. If you reuse them, carry the
-attribution in README.md.
