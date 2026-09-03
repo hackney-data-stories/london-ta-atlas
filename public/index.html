@@ -15,23 +15,50 @@
 <meta name="twitter:description" content="76,017 households and 96,885 children in temporary accommodation across 33 boroughs. Every figure from public data.">
 <meta name="twitter:image" content="https://london-ta-atlas.bsg-george.workers.dev/social_card.png">
 <style>
+  /* House type: Newsreader (Production Type, OFL) for headline and prose,
+     Public Sans (USWDS, OFL) for numbers and interface. Self-hosted; the
+     standalone build inlines the files. Licences in fonts/. */
+  @font-face{font-family:'Newsreader';src:url('fonts/Newsreader.woff2') format('woff2');
+             font-weight:400 650;font-style:normal;font-display:swap}
+  @font-face{font-family:'Newsreader';src:url('fonts/Newsreader-Italic.woff2') format('woff2');
+             font-weight:400;font-style:italic;font-display:swap}
+  @font-face{font-family:'Public Sans';src:url('fonts/PublicSans.woff2') format('woff2');
+             font-weight:100 900;font-style:normal;font-display:swap}
   :root {
-    --ink:#1b1b1b; --mute:#666; --line:#e3e3e3; --bg:#fff;
-    --accent:#0b6b57; --warn:#a8322d;
+    --ink:#1a1a1a; --ink2:#454545; --mute:#6b6b6b; --line:#e2ddd3; --bg:#fbf9f4;
+    --accent:#0b6b57; --warn:#9b2c2a;
+    /* House type. The two families are self-hosted when chosen (see
+       TA_ATLAS_STYLE.md §10); until then the system stack stands in. */
+    --serif: 'Newsreader', Georgia, "Times New Roman", serif;
+    --sans: 'Public Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   }
   html,body,#map{height:100%;margin:0;padding:0}
   html,body{overflow:hidden}
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;color:var(--ink)}
+  body{font-family:var(--sans);color:var(--ink);background:var(--bg)}
   .pane{
     position:absolute;top:12px;z-index:10;background:rgba(255,255,255,.975);
     border:1px solid var(--line);border-radius:8px;
     box-shadow:0 2px 14px rgba(0,0,0,.10);
-    max-height:calc(100% - 24px);overflow-y:auto;font-size:13px;line-height:1.45}
+    max-height:calc(100% - 50px);overflow-y:auto;font-size:13px;line-height:1.45}
   #panel{left:12px;width:330px}
   #detail{right:12px;width:370px;display:none}
   .pane header{padding:13px 15px 10px;border-bottom:1px solid var(--line)}
-  .pane h1{margin:0;font-size:16px;font-weight:650;letter-spacing:-.01em}
+  .pane h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em;font-family:var(--serif)}
   .pane header p{margin:5px 0 0;color:var(--mute);font-size:11.5px}
+  .kicker{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);
+          font-weight:650;margin:0 0 4px}
+  .byline{font-size:11.5px;color:var(--mute);line-height:1.45;margin:6px 0 0}
+  .byline b{color:var(--ink2);font-weight:600}
+  .privacy{font-size:10.5px;color:var(--mute);margin:5px 0 0}
+  ol.sources{margin:6px 0 0;padding-left:18px;font-size:11px;color:var(--mute);line-height:1.45}
+  ol.sources li{margin:0 0 3px}
+  .log{font-size:11px;color:var(--mute);line-height:1.45;margin:6px 0 0}
+  .log b{color:var(--ink2)}
+  /* Figure frame on the map: source bottom-left, signature bottom-right */
+  #mapframe{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;
+            padding:5px 10px;font-size:10.5px;color:var(--ink2);pointer-events:none;
+            background:linear-gradient(transparent, rgba(251,249,244,.85))}
+  #mapframe b{font-weight:650;color:var(--ink)}
   .pane section{padding:11px 15px;border-bottom:1px solid var(--line)}
   .pane section:last-child{border-bottom:0}
   h2{margin:0 0 7px;font-size:10.5px;text-transform:uppercase;color:var(--mute);
@@ -77,11 +104,13 @@
   .tools button{background:none;border:0;padding:0;font:inherit;font-size:11.5px;
         color:var(--accent);cursor:pointer;text-decoration:underline}
   .print-only{display:none}
+  .spark{vertical-align:middle;margin-right:7px;color:#5c6b66;overflow:visible}
+  .spark.up{color:var(--warn)} .spark.down{color:var(--accent)}
   table{width:100%;border-collapse:collapse;font-size:12.5px}
   td{padding:3px 0;vertical-align:top}
   td.k{color:var(--mute);padding-right:10px}
   td.v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
-  .big{font-size:26px;font-weight:680;letter-spacing:-.02em;line-height:1.1}
+  .big{font-size:27px;font-weight:600;letter-spacing:-.015em;line-height:1.1;font-family:var(--serif);font-variant-numeric:tabular-nums}
   .big span{font-size:12px;font-weight:400;color:var(--mute)}
   .bar{height:9px;background:#eee;border-radius:5px;overflow:hidden;display:flex;margin:5px 0 2px}
   .bar b{display:block;height:100%}
@@ -122,6 +151,7 @@
      normal flow, page scrolls. */
   @media (max-width: 760px){
     html,body{height:auto;overflow:auto}
+    #mapframe{position:static;background:none;padding:4px 12px 0}
     #map{position:relative;height:46vh;min-height:300px;width:100%}
     /* relative, not static: button.x is absolutely positioned and would
        otherwise anchor to the viewport and float over the map. */
@@ -143,42 +173,51 @@
      print-color-adjust is exact. Declared after the phone rules on
      purpose: a printed A4 page is narrower than the phone breakpoint. */
   @media print{
-    @page{size:A4 portrait;margin:9mm 10mm}
+    @page{size:A4 portrait;margin:8mm 10mm}
     html,body{height:auto;overflow:visible;background:#fff}
-    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:10px;
-         display:flex;flex-direction:column}
-    #map{position:relative;order:0;height:84mm;min-height:0;width:100%;background:#fff;
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:10px}
+    #map{position:relative;height:70mm;min-height:0;width:100%;background:#fff;
          break-after:avoid}
-    body.print-borough #map{height:62mm}
+    body.print-borough #map{height:50mm}
     #map path{cursor:default;transition:none}
     #labels{display:block}
     #tip,button.x,select,#dist,.legend-lab,.breaks,.tools,#howto,#pickwrap,
-    #alltable-wrap,#explore,#shared-wrap{display:none !important}
+    #alltable-wrap,#explore,#shared-wrap,#mapframe,.privacy{display:none !important}
     .pane{position:static;width:auto;max-height:none;box-shadow:none;border:0;
           border-radius:0;font-size:10px;overflow:visible;margin:0;background:#fff}
     /* the id rules above set screen widths; they outrank .pane */
     #panel,#detail{width:auto}
-    #mapcap{order:1;margin:0;border:0;padding:2px 0 0;text-align:center;font-size:9px}
-    #panel{order:3} #detail{order:2;display:none}
-    #case,#method{column-count:2;column-gap:8mm}
-    #case h2,#caseHead,#method h2,#method .print-only{column-span:all}
+    #mapcap{margin:0;border:0;padding:1px 0 0;text-align:center;font-size:9px}
+    #detail{display:none}
+    #case{column-count:2;column-gap:8mm}
+    #case h2,#caseHead{column-span:all}
+    #method .mcols h2{margin-top:2px}
     body.print-borough #detail{display:block}
     body.print-borough #panel section:not(#method){display:none}
+    body.print-borough .method-general{display:none}
     body.print-borough #panel header{display:none}
     .pane header{padding:3px 0 5px}
-    .pane section{padding:5px 0;break-inside:avoid}
+    .pane section{padding:4px 0;break-inside:avoid}
     .pane h1{font-size:14px}
     .big{font-size:18px}
     #detailBody{column-count:2;column-gap:8mm;column-fill:balance}
     #detailBody header{column-span:all;border-bottom:1px solid #ccc}
     #detailBody section{border-bottom:0;padding:3px 0 5px}
-    #detailBody table{font-size:10px} #detailBody td{padding:1.5px 0}
-    #detailBody .note{font-size:9px;line-height:1.3;margin-top:3px}
+    #detailBody{font-size:9.5px}
+    #detailBody table{font-size:9.5px} #detailBody td{padding:1px 0}
+    #detailBody .note{font-size:8.5px;line-height:1.3}
+    #detailBody .big{font-size:16px} #detailBody h2{margin-bottom:4px}
     ol.steps li{margin:0 0 2px}
     .step{border:0;padding:2px 0;cursor:default;font-size:10px;line-height:1.35}
     .step::before{background:#ddd}
     .step.on{background:none}
-    #method .prov{font-size:9px;line-height:1.35;margin-top:5px}
+    #method{break-inside:auto}
+    .srclinks,.log:not(.latest){display:none !important}
+    #method .mcols{column-count:2;column-gap:8mm;column-fill:balance;break-inside:avoid}
+    #method p,#method ol,#method h2{break-inside:avoid}
+    #method h2{break-after:avoid}
+    #method .prov,#method .log,#method ol.sources{font-size:8.5px;line-height:1.32;margin-top:3px}
+    #method ol.sources li{margin:0 0 2px}
     details>summary{display:none}
     .print-only{display:block;font-size:8.5px;color:#555;border-top:1px solid #ccc;
                 margin-top:6px;padding-top:3px;line-height:1.35}
@@ -188,13 +227,19 @@
 </head>
 <body>
 <div id="map"></div>
+<div id="mapframe" aria-hidden="true"><span id="mapsrc"></span><span><b>London TA Atlas</b> · data to Mar 2026</span></div>
 <p class="print-only" id="mapcap"></p>
 <div id="tip"></div>
 
 <div class="pane" id="panel">
-  <header>
+  <header id="masthead">
+    <p class="kicker">Hackney Data Stories</p>
     <h1>London Temporary Accommodation Atlas</h1>
-    <p>33 boroughs · every figure from public data · <span id="asof"></span></p>
+    <p>All 33 boroughs. Every figure from published data; <span id="asof"></span>.</p>
+    <p class="byline">By <b>George Sheldon Grün</b>. First published 3 September 2026.
+      This version <b>1.2</b>, 3 September 2026. Unfunded and independent of any council or party.
+      Corrections: <a href="https://github.com/hackney-data-stories/london-ta-atlas/issues" target="_blank" rel="noopener">open an issue</a>.</p>
+    <p class="privacy">This page loads nothing from third parties and sets no cookies.</p>
     <div class="tools"><button type="button" onclick="printView()">Print this page</button></div>
   </header>
   <section id="case">
@@ -204,9 +249,10 @@
   </section>
   <section id="explore">
     <h2>Explore any measure</h2>
-    <p class="intro" style="margin-bottom:7px">Every borough is shaded by the
-    measure chosen here; darker is more. Click a borough — or tab to it — for
-    its full picture. Grey means that borough did not submit the return.</p>
+    <p class="intro" style="margin-bottom:7px">Boroughs are shaded by the measure
+    chosen here; darker is more. Select a borough on the map, by keyboard or from
+    the list for its full figures. Boroughs shown in grey did not submit the
+    return for that quarter.</p>
     <select id="metric" aria-label="Choose the measure to map"></select>
     <svg id="dist" viewBox="0 0 300 44" role="img"
          aria-label="Distribution of the selected measure across the 33 boroughs"></svg>
@@ -217,6 +263,7 @@
       <summary>All 33 boroughs, as a table</summary>
       <table class="all" id="alltable"></table>
     </details>
+    <div class="tools"><button type="button" onclick="downloadAllCSV()">Download all 33 boroughs, every measure (CSV)</button></div>
   </section>
   <section id="pickwrap">
     <h2>Borough</h2>
@@ -227,22 +274,22 @@
       <summary>How to read this map</summary>
       <div class="prov">
         <p style="margin:7px 0 0"><b>The colours are quantiles.</b> Boroughs
-        are sorted and cut into equally sized groups, so each shade holds
-        roughly the same number of boroughs. Equal steps in colour are
-        therefore not equal steps in value; the strip under the menu shows
-        where every borough actually sits.</p>
-        <p style="margin:7px 0 0"><b>Grey is data, not a gap in the map.</b>
-        Six boroughs failed to submit at least one quarterly return and Ealing
-        submitted one in four. A council that cannot say how many households it
-        has in temporary accommodation is telling you something.</p>
-        <p style="margin:7px 0 0"><b>Measured or inferred is marked on every
-        measure.</b> Household counts, stays, children and out-of-area
-        placements are MHCLG statutory returns. Nightly rates are decoded from
-        each council's own published payments and stay inference until an
-        officer checks one against an invoice.</p>
-        <p style="margin:7px 0 0"><b>A blank rate is deliberate.</b> Where a
-        borough batches its invoices, one payment covers many units and cannot
-        be turned into a nightly rate, so none is shown.</p>
+        are sorted and divided into groups of equal size, so each shade holds
+        roughly the same number of boroughs. Equal steps in colour are not
+        equal steps in value. The strip under the menu shows where each borough
+        sits and where the class boundaries fall.</p>
+        <p style="margin:7px 0 0"><b>Grey means not reported.</b> Six boroughs
+        did not submit at least one quarterly return in the year to March 2026;
+        Ealing submitted one of four.</p>
+        <p style="margin:7px 0 0"><b>Each measure says whether it is official
+        statistics or an estimate.</b> Household counts, length of stay, children
+        and placements outside the borough are MHCLG statutory returns. Rates
+        are estimates derived from each council's published payment data and
+        have not been confirmed against an invoice.</p>
+        <p style="margin:7px 0 0"><b>A blank rate means no usable figure.</b>
+        Where a council's single payments cover several units, no per-night rate
+        can be derived, and none is shown. The reason is given in the tooltip and
+        in the borough's own figures.</p>
       </div>
     </details>
   </section>
@@ -252,37 +299,68 @@
   </section>
   <section id="method">
     <h2>Method and confidence</h2>
-    <p class="prov">
-      Household counts, length of stay, children and out-of-area placements are
-      MHCLG statutory returns — measured, not modelled. Nightly rates are
-      <em>decoded</em> from councils' own published payment files and remain
-      inference until an officer confirms one against an invoice.
+    <div class="mcols">
+    <p class="prov method-general">
+      Household counts, length of stay, children and placements outside the
+      borough are MHCLG statutory returns: official statistics, not modelled.
+      Length of stay is the time already spent by households present at the
+      quarter end, not the length of a completed stay. Rates are
+      <em>estimates</em> derived from councils' published payment files and
+      have not been confirmed against an invoice.
     </p>
     <details>
-      <summary>Three things this map deliberately will not do</summary>
+      <summary>What this map does not show, and why</summary>
       <p class="prov">
-        <b>It will not rank boroughs on total spend.</b> Each borough's
-        published file captures a different and unknowable share of its bill —
-        cost per household-night ranges from £3 to £107, which measures
-        publication practice, not procurement.<br><br>
-        <b>It will not compare an operator's price between boroughs</b> unless
-        both payments sit under the same homelessness label. Ungated, the same
+        <b>It does not rank boroughs on published spend.</b> Each borough's
+        published file captures a different and unknowable share of its bill.
+        Published spend per household-night ranges from £3 to £107 across
+        London, which measures publication practice rather than procurement.
+        What can be concluded: a borough's own total over its own period. What
+        cannot: which borough spends more.</p>
+      <p class="prov">
+        <b>It does not compare an operator's price between boroughs</b> unless
+        both payments sit under the same homelessness label. Without that, one
         firm's payments mix homelessness lets with children's semi-independent
-        placements — different products at different prices.<br><br>
-        <b>It will not show a rate where a borough batches its invoices.</b>
-        A payment covering many units cannot be divided into a nightly rate.
+        placements, which are different products at different prices.</p>
+      <p class="prov">
+        <b>It does not show a rate where single payments cover several
+        units.</b> Such a payment cannot be divided into a per-night rate.
       </p>
     </details>
-    <p class="prov" id="sources"></p>
-    <p class="prov">
+    </div>
+    <div class="mcols">
+    <h2 style="margin-top:10px">Sources</h2>
+    <ol class="sources" id="sources"></ol>
+    <p class="prov srclinks" style="margin-top:5px">
+      <a href="https://www.gov.uk/government/collections/homelessness-statistics" target="_blank" rel="noopener">MHCLG homelessness statistics</a> ·
+      <a href="https://geoportal.statistics.gov.uk/" target="_blank" rel="noopener">ONS Open Geography Portal</a> ·
+      <a href="https://github.com/hackney-data-stories/london-ta-atlas" target="_blank" rel="noopener">code and data on GitHub</a>
+    </p>
+    <h2 style="margin-top:10px">Corrections and clarifications</h2>
+    <p class="log latest"><b>Version 1.2, 3 September 2026.</b> The annualised spend
+      figure in each borough's panel has been withdrawn: it understated seven
+      boroughs, Redbridge by 44%, because stray invoice dates inflated the month
+      count. It is replaced by the sum of published payments over the period the
+      files cover, which differs by borough and is shown beside the figure.
+      Ealing's change in median stay has been withdrawn: one quarter reported.
+      "Placed outside the borough" now reads "outside the borough", since the
+      MHCLG total includes households owed a duty with no placement yet made.</p>
+    <p class="log"><b>Version 1.1, 3 September 2026.</b> Havering's leased rate
+      withdrawn from the leasing comparison: it is recorded under the leasing
+      cost code but priced per night. The borough panel keeps the figure with
+      that explanation. Two caveat sentences reworded for a public reader.</p>
+    <p class="log"><b>Version 1.0, 3 September 2026.</b> First published.</p>
+    <p class="print-only" style="border:0;margin-top:2px;padding:0">Earlier corrections are listed on the live page.</p>
+    <p class="prov attribution">
       Contains public sector information licensed under the
       <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" target="_blank" rel="noopener">Open&nbsp;Government&nbsp;Licence&nbsp;v3.0</a>.
       Boundaries: Source: Office for National Statistics licensed under the
       Open Government Licence v.3.0. Contains OS data &copy; Crown copyright
       and database right 2026.<br>
-      Code <a href="https://github.com/hackney-data-stories/london-ta-atlas" target="_blank" rel="noopener">on GitHub</a>, MIT licensed —
-      corrections welcome as issues.
+      Code <a href="https://github.com/hackney-data-stories/london-ta-atlas" target="_blank" rel="noopener">on GitHub</a>, MIT licensed.
+      Corrections welcome as issues.
     </p>
+    </div>
     <p class="print-only" id="printfoot"></p>
   </section>
 </div>
@@ -304,47 +382,62 @@ const gbp = n => n==null ? '—' : '£'+n.toLocaleString('en-GB',{maximumFractio
 
 const METRICS = [
   { id:'stay_nightly', label:'Median stay in nightly-paid accommodation (days)',
-    unit:'days', prov:'MHCLG table TA7, 31 March 2026. Measured.',
+    unit:'days', prov:'Official statistics: MHCLG table TA7, quarter to 31 March 2026. Time already spent by households present at the quarter end.',
     get:b => last(b.stay && b.stay.nightly) },
   { id:'stay_change', label:'Change in that median stay, Jun 2025 → Mar 2026',
-    unit:'%', prov:'MHCLG table TA7, four quarters. Measured.',
+    unit:'%', prov:'Official statistics: MHCLG table TA7, June 2025 to March 2026. Boroughs with fewer than two quarters reported are shown as not reported.',
     get:b => { const s=b.stay&&b.stay.nightly; if(!s) return null;
-               const k=Object.keys(s).sort(); const f=s[k[0]],l=s[k[k.length-1]];
-               return (f&&l)? (l-f)/f*100 : null; }, fmt:pc },
+               const q=Object.entries(s).filter(([,v])=>v!=null).sort();
+               if(q.length<2) return null;
+               const f=q[0][1], l=q[q.length-1][1];
+               return f ? (l-f)/f*100 : null; }, fmt:pc,
+    why:b => { const s=b.stay&&b.stay.nightly; if(!s) return null;
+               const q=Object.entries(s).filter(([,v])=>v!=null).sort();
+               if(q.length<2) return null;   // genuinely not reported
+               return q[0][1] ? null : 'not usable: the earliest reported median is 0 days, so a percentage change cannot be computed'; } },
   { id:'nightly_share', label:'Share of TA households in nightly-paid accommodation',
-    unit:'%', prov:'MHCLG table TA1, 31 March 2026. Measured.',
+    unit:'%', prov:'Official statistics: MHCLG table TA1, 31 March 2026.',
     get:b => b.households && b.households.total ? 100*b.households.nightly/b.households.total : null,
     fmt:pc },
   { id:'leased_share', label:'Share of TA households in private sector leasing',
-    unit:'%', prov:'MHCLG table TA1. The cheaper arrangement — higher is better.',
+    unit:'%', prov:'Official statistics: MHCLG table TA1, 31 March 2026. Leasing is the cheaper arrangement, so a higher share is better.',
     get:b => b.households && b.households.total ? 100*b.households.leased/b.households.total : null,
     fmt:pc, good:true },
   { id:'ta_total', label:'Households in temporary accommodation',
-    unit:'households', prov:'MHCLG table TA1, 31 March 2026. Measured.',
+    unit:'households', prov:'Official statistics: MHCLG table TA1, 31 March 2026.',
     get:b => b.households && b.households.total },
   { id:'children', label:'Children (under 18) in temporary accommodation',
-    unit:'children', prov:'MHCLG table TA8, 31 March 2026. Measured.',
+    unit:'children', prov:'Official statistics: MHCLG table TA8, 31 March 2026.',
     get:b => b.children && b.children.under18 },
   { id:'kids_5yr', label:'Families with children 5+ years in nightly-paid accommodation',
-    unit:'families', prov:'MHCLG table TA4c, 31 March 2026. Measured.',
+    unit:'families', prov:'Official statistics: MHCLG table TA4c, 31 March 2026. Households with dependent children.',
     get:b => b.bands_children && b.bands_children.nightly ? b.bands_children.nightly[4] : null },
   { id:'sixweek', label:'B&B placements with children beyond the 6-week legal limit',
-    unit:'families', prov:'MHCLG table TA1. Suitability of Accommodation Order 2003, art. 4.',
+    unit:'families', prov:'Official statistics: MHCLG table TA1, 31 March 2026. The six-week limit is article 4 of the Homelessness (Suitability of Accommodation) (England) Order 2003. Zero is a reported zero; grey is not reported.',
     get:b => b.bb_six_week ? b.bb_six_week.over_6_weeks : null },
-  { id:'ooa', label:'Share of households placed outside the borough',
-    unit:'%', prov:'MHCLG table TA9, 31 March 2026. Measured.',
+  { id:'ooa', label:'Share of households outside the borough',
+    unit:'%', prov:'Official statistics: MHCLG table TA9, 31 March 2026. Includes households owed a duty with no placement yet made.',
     get:b => b.out_of_area && b.out_of_area.pct, fmt:pc },
-  { id:'rate_bb', label:'Decoded nightly rate — bed and breakfast',
-    unit:'£/night', prov:'Decoded from the borough’s own payment file. INFERENCE. Blank where the borough batches invoices or publishes no B&B label.',
+  { id:'rate_bb', label:'Estimated nightly rate, bed and breakfast',
+    unit:'£/night', prov:'Estimate, derived from the borough’s published payments. Not confirmed against an invoice. Blank where no per-night rate can be derived or no B&B label is published.',
     get:b => b.rates && b.rates.bb ? b.rates.bb.rate : null,
-    fmt:gbp },
-  { id:'rate_leased', label:'Cost of a leased unit per night',
-    unit:'£/night', prov:'Median monthly payment ÷ 30.44. INFERENCE. Blank where unusable.',
+    fmt:gbp, why:b => rateWhy(b,'bb') },
+  { id:'rate_leased', label:'Estimated cost of a leased home per night',
+    unit:'£/night', prov:'Estimate: median monthly payment divided by 30.44. Not confirmed against an invoice. Blank where no usable figure exists.',
     get:b => (b.rates && b.rates.leased && !b.rates.leased.mislabelled) ? b.rates.leased.rate : null,
-    fmt:gbp,
-    why:b => (b.rates && b.rates.leased && b.rates.leased.exclusion_reason) || null },
+    fmt:gbp, why:b => rateWhy(b,'leased') },
 ];
 
+// Why a rate layer is blank for a borough. The contract distinguishes a
+// figure that exists but is not usable (its basis string says why) from a
+// borough that publishes nothing under that label; neither is a missing
+// statutory return, which is what a plain "not reported" means elsewhere.
+function rateWhy(b, arr){
+  const r = b.rates && b.rates[arr];
+  if(r && r.rate!=null && !r.mislabelled) return null;
+  if(r) return r.exclusion_reason || r.basis || 'not usable';
+  return 'not usable: no payments published under this label, or the borough batches its invoices';
+}
 function whyNull(slug){ return (cur.why && cur.why(DATA.boroughs[slug]||{})) || null; }
 
 function last(o){ if(!o) return null; const k=Object.keys(o).sort(); return o[k[k.length-1]]; }
@@ -405,6 +498,7 @@ function eachRing(f,cb){
 
 function init(){
   document.getElementById('asof').textContent = 'data to 31 March 2026';
+  document.getElementById('mapsrc').textContent = 'Source: MHCLG statutory returns; boroughs’ published payments. Boundaries: ONS.';
   const sel = document.getElementById('metric');
   METRICS.forEach((m,i)=>{ const o=document.createElement('option');
     o.value=i; o.textContent=m.label; sel.appendChild(o); });
@@ -418,7 +512,8 @@ function init(){
   pick.onchange = () => pick.value ? showDetail(pick.value) : closeDetail();
 
   document.getElementById('sources').innerHTML =
-    'Sources: ' + DATA.london.sources.join('; ') + '. All Open Government Licence.';
+    DATA.london.sources.map(s => '<li>' + s + '.</li>').join('') +
+    '<li>All sources are published under the Open Government Licence v3.0.</li>';
 
   GEO.features.forEach(f=>{
     const b = DATA.boroughs[f.properties.slug] || {};
@@ -478,7 +573,7 @@ function showTip(f, x, y){
   const tip = document.getElementById('tip');
   const v = f.properties[cur.id], fm = cur.fmt||fmt;
   const why = v==null ? whyNull(f.properties.slug) : null;
-  tip.innerHTML = `<b>${f.properties.name}</b><br>${cur.label}<br><b>${v==null?(why?'excluded':'no data'):fm(v)}</b>` +
+  tip.innerHTML = `<b>${f.properties.name}</b><br>${cur.label}<br><b>${v==null?(why?'no usable figure':'not reported'):fm(v)}</b>` +
     (why ? `<br><span style="opacity:.8">${why}</span>` : '');
   tip.style.display='block';
   tip.style.left = Math.max(6, Math.min(x, innerWidth-250))+'px';
@@ -563,18 +658,18 @@ function paint(){
     p.setAttribute('fill', colour(v));
     const why = v==null ? whyNull(x.properties.slug) : null;
     p.setAttribute('aria-label',
-      `${x.properties.name}. ${cur.label}: ${v==null?(why?'excluded — '+why:'no data'):f(v)}.`);
+      `${x.properties.name}. ${cur.label}: ${v==null?(why?'no usable figure: '+why:'not reported'):f(v)}.`);
   });
   drawDist(vals, stops, RAMP, f);
   drawTable(colour, f);
   document.getElementById('lo').textContent = f(vals[0]);
   document.getElementById('hi').textContent = f(vals[vals.length-1]) + '  ·  grey = no data';
   document.getElementById('breaks').innerHTML =
-    `${stops.length+1} quantile classes — equal numbers of boroughs, not equal
+    `${stops.length+1} quantile classes: equal numbers of boroughs, not equal
      steps in value. Class boundaries at ` +
     stops.map(s=>`<b>${f(s)}</b>`).join(' · ') + '.';
   document.getElementById('prov').innerHTML =
-    cur.prov + (cur.good ? ' <b>Darker is better here.</b>' : '');
+    cur.prov + (cur.good ? ' <b>Darker is better on this measure.</b>' : '');
   if(openSlug) showDetail(openSlug);
   markStep();
   writeHash();
@@ -611,9 +706,9 @@ function drawDist(vals, stops, RAMP, f){
   } else {
     d.appendChild(el('text',{ x:150, y:38, 'font-size':10.5, fill:'#8a8a8a',
       'text-anchor':'middle' }, sel
-        ? sel.properties.name + (whyNull(openSlug) ? ' — excluded from this comparison'
-                                                   : ' — no figure for this measure')
-        : 'one tick per borough — pick one to mark it'));
+        ? sel.properties.name + (whyNull(openSlug) ? ': no usable figure for this measure'
+                                                   : ': not reported')
+        : 'One tick per borough. Select one to mark it.'));
   }
 }
 
@@ -631,7 +726,7 @@ function drawTable(colour, f){
       (r.v==null && whyNull(r.slug) ? `<span class="warnmark">${whyNull(r.slug)}</span>` : '') +
       `</td>` +
       `<td class="v">${r.v==null
-        ? `<span style="color:var(--mute);font-weight:400">${whyNull(r.slug)?'excluded':'no data'}</span>`
+        ? `<span style="color:var(--mute);font-weight:400">${whyNull(r.slug)?'not usable':'not reported'}</span>`
         : f(r.v)}</td></tr>`).join('');
   t.querySelectorAll('button').forEach(bn =>
     bn.addEventListener('click', ()=>showDetail(bn.dataset.slug, true)));
@@ -714,7 +809,7 @@ function buildCase(){
     `${fmt(L.tot)}<span> households in temporary accommodation in London, 31 March 2026 · ${fmt(L.kids)} children</span>`;
   STEPS = [
     { metric:'nightly_share',
-      html:`<b>${fmt(L.nightly)}</b> of them — <b>${pc(100*L.nightly/L.tot)}</b> — are in nightly-paid
+      html:`<b>${fmt(L.nightly)}</b> of them, <b>${pc(100*L.nightly/L.tot)}</b>, are in nightly-paid
             accommodation: dearer than leasing, with no security of tenure, bought by the night.` },
     { metric:'stay_nightly',
       html:`It is priced as temporary and used for years. In <b>${L.stayOverYear} of ${L.stayN}</b> boroughs
@@ -722,7 +817,7 @@ function buildCase(){
             and in <b>${L.trendUp} of the ${L.trendN}</b> with more than one quarter reported, the stay
             has lengthened since June 2025.` },
     { metric:'ooa',
-      html:`<b>${fmt(L.ooa)}</b> households — <b>${pc(100*L.ooa/L.tot)}</b> — are outside the
+      html:`<b>${fmt(L.ooa)}</b> households, <b>${pc(100*L.ooa/L.tot)}</b>, are outside the
             borough that owes them the duty.` },
     { metric:'kids_5yr',
       html:`<b>${fmt(L.k5)}</b> families with children have been in nightly-paid accommodation
@@ -753,6 +848,129 @@ function markStep(){
     bn.classList.toggle('on', !!STEPS[+bn.dataset.i] && STEPS[+bn.dataset.i].metric===cur.id));
 }
 
+// --- sparklines ---------------------------------------------------------
+// Four quarters, hand-rolled SVG. A null quarter breaks the line rather
+// than being interpolated; fewer than two values draws nothing. The
+// accessible name carries every quarter's value, so a screen reader gets
+// the series the sighted reader gets from the shape.
+function qlabel(q){ return ({'03':'Mar','06':'Jun','09':'Sep','12':'Dec'})[q.slice(4)] + ' ' + q.slice(0,4); }
+function spark(obj, quarters, fmtv, label){
+  if(!obj || !quarters || quarters.length<2) return '';
+  const pts = quarters.map(q => obj[q]==null ? null : +obj[q]);
+  const vals = pts.filter(v=>v!=null);
+  if(vals.length<2) return '';
+  const W=60, H=16, pad=2.5, lo=Math.min(...vals), hi=Math.max(...vals);
+  const x = i => pad + i*(W-2*pad)/(quarters.length-1);
+  const y = v => hi===lo ? H/2 : pad + (H-2*pad)*(1-(v-lo)/(hi-lo));
+  let d='', prev=false;
+  pts.forEach((v,i)=>{ if(v==null){ prev=false; return; }
+    d += (prev?'L':'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); prev=true; });
+  const idx = pts.map((v,i)=>v==null?-1:i).filter(i=>i>=0);
+  const first = pts[idx[0]], lastI = idx[idx.length-1], lastV = pts[lastI];
+  const dir = lastV>first ? 'up' : (lastV<first ? 'down' : '');
+  const title = quarters.map((q,i)=>qlabel(q)+' '+(pts[i]==null?'not reported':fmtv(pts[i]))).join(', ');
+  return `<svg class="spark ${dir}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+    aria-label="${label}, four quarters: ${title}"><title>${title}</title>
+    <path d="${d}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${x(lastI).toFixed(1)}" cy="${y(lastV).toFixed(1)}" r="1.9" fill="currentColor"/></svg>`;
+}
+
+// --- CSV export ------------------------------------------------------------
+// Long format, one provenance column per row, values exactly as published
+// in ta_map.json. Nothing here is computed beyond what the page shows.
+const SRC = {
+  households:'MHCLG table TA1', households_trend:'MHCLG table TA1',
+  stay:'MHCLG table TA7: median days already spent by households present at quarter end',
+  bands:'MHCLG table TA4', bands_children:'MHCLG table TA4c', children:'MHCLG table TA8',
+  out_of_area:'MHCLG table TA9', bb_six_week:'MHCLG table TA1; Suitability of Accommodation Order 2003, art. 4',
+  spend:"borough's published payments; see note", rates:"estimate derived from borough's published payments; not confirmed against an invoice",
+  adam:'Access provider site; Find a Tender notices'
+};
+function csvCell(v){ if(v==null) return ''; const s=String(v); return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+// A downloaded file circulates detached from every caveat on the page, so
+// the licence, the attribution, the quarter and the generation date travel
+// in it, as comment lines above the header.
+// The canonical address comes from the og:url meta, never a literal here:
+// the standalone build asserts the script contains no URLs, and the emailed
+// copy's own location is a file path nobody else can open.
+function siteURL(){
+  const m = document.querySelector('meta[property="og:url"]');
+  return (m && m.content) || location.href.split('#')[0];
+}
+function csvPreamble(title){
+  const q = (Object.values(DATA.boroughs)[0].quarters||[]).slice(-1)[0] || '';
+  const asat = q ? new Date(+q.slice(0,4), +q.slice(4), 0).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : '31 March 2026';
+  return [
+    '# London Temporary Accommodation Atlas: ' + title,
+    '# Data as at ' + asat + ' (MHCLG quarter end). Generated ' +
+      new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) +
+      '. The next MHCLG release will change most of these figures; check the live page before reuse.',
+    '# Rate and spend figures derive from each borough\'s published payment files, whose periods differ by borough and are not the MHCLG quarter; where the borough\'s payment window is known it is given on the row.',
+    '# Source data: MHCLG, Statutory homelessness in England, detailed local authority tables; the 33 boroughs\' published payments. Rates are inference, decoded from published payments, until an officer confirms one against an invoice.',
+    '# Contains public sector information licensed under the Open Government Licence v3.0. Boundaries: Source: Office for National Statistics licensed under the Open Government Licence v.3.0. Contains OS data (c) Crown copyright and database right 2026.',
+    '# Empty value: see the status/note column. "not reported" is a missing statutory return; "not usable" is a figure that exists but cannot be turned into a rate.',
+    '# Live page: ' + siteURL() + '. Corrections welcome as issues on GitHub.',
+  ];
+}
+function downloadCSV(name, rows, title){
+  const text = '\ufeff' + csvPreamble(title).map(l=>csvCell(l)).join('\r\n') + '\r\n' +
+    rows.map(r=>r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], {type:'text/csv;charset=utf-8'}));
+  a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function asOf(b){ const q=(b.quarters||[]).slice(-1)[0]; return q ? q.slice(0,4)+'-'+q.slice(4) : '2026-03'; }
+function boroughRows(slug){
+  const b = DATA.boroughs[slug], R = [];
+  const window_ = (b.spend && b.spend.period) ? 'payments ' + b.spend.period : '';
+  const row = (section,item,quarter,value,note) => {
+    let n = note || (value==null ? (section==='rates' ? 'not usable' : 'not reported') : '');
+    if(window_ && (section==='rates' || section==='spend')) n = window_ + (n ? ' | ' + n : '');
+    R.push([b.name,b.code,section,item,quarter||'',value,n,SRC[section]||'']);
+  };
+  const latest = (b.quarters||[]).slice(-1)[0] || '';
+  Object.entries(b.households||{}).forEach(([k,v])=>row('households',k,latest,v));
+  Object.entries(b.households_trend||{}).forEach(([q,o])=>Object.entries(o||{}).forEach(([k,v])=>row('households_trend',k,q,v)));
+  Object.entries(b.stay||{}).forEach(([arr,o])=>Object.entries(o||{}).forEach(([q,v])=>row('stay',arr,q,v)));
+  const BL=['under 6 months','6 months to 1 year','1 to 2 years','2 to 5 years','5 years or more'];
+  Object.entries(b.bands||{}).forEach(([arr,a])=>(a||[]).forEach((v,i)=>row('bands',arr+': '+BL[i],latest,v)));
+  Object.entries(b.bands_children||{}).forEach(([arr,a])=>(a||[]).forEach((v,i)=>row('bands_children',arr+': '+BL[i],latest,v)));
+  if(b.children){ row('children','under18',latest,b.children.under18); row('children','school_age',latest,b.children.school_age);
+    Object.entries(b.children.by_age||{}).forEach(([age,v])=>row('children','age '+age,latest,v)); }
+  if(b.out_of_area){ row('out_of_area','total',latest,b.out_of_area.total,b.out_of_area.note); row('out_of_area','pct',latest,b.out_of_area.pct);
+    Object.entries(b.out_of_area.by_type||{}).forEach(([k,v])=>row('out_of_area','by_type: '+k,latest,v)); }
+  Object.entries(b.bb_six_week||{}).forEach(([k,v])=>row('bb_six_week',k,latest,v));
+  if(b.spend){ row('spend','total_in_period','',b.spend.total_in_period,b.spend.confidence);
+    row('spend','period','',b.spend.period,b.spend.confidence); row('spend','months_in_period','',b.spend.months_in_period);
+    row('spend','redacted_share','',b.spend.redacted_share);
+    Object.entries(b.spend.by_arrangement||{}).forEach(([k,v])=>row('spend','by_arrangement: '+k,'',v,b.spend.confidence)); }
+  Object.entries(b.rates||{}).forEach(([arr,r])=>{
+    row('rates',arr+': rate (£/night)','',r.rate,[r.basis, r.mislabelled?'recorded under the leasing cost code but priced per night':'', r.exclusion_reason||''].filter(Boolean).join(' | '));
+    row('rates',arr+': n_payments','',r.n_payments); row('rates',arr+': decode_share','',r.decode_share);
+    row('rates',arr+': median_payment','',r.median_payment); row('rates',arr+': priced_nightly','',r.priced_nightly); });
+  Object.entries(b.adam||{}).forEach(([k,v])=>row('adam',k,'',v));
+  (b.top_payees||[]).forEach((p,i)=>row('spend','top payee '+(i+1)+': '+p.name,'',p.amount,b.spend&&b.spend.confidence));
+  return R;
+}
+function downloadBoroughCSV(slug){
+  const b = DATA.boroughs[slug]; if(!b) return;
+  downloadCSV(`london-ta-atlas_${slug}_${asOf(b)}.csv`,
+    [['borough','code','section','item','quarter','value','note','source']].concat(boroughRows(slug)),
+    b.name + ', every published figure');
+}
+function downloadAllCSV(){
+  const rows = [['borough','code','metric','label','value','status','provenance']];
+  Object.entries(DATA.boroughs).sort((a,b)=>a[1].name.localeCompare(b[1].name)).forEach(([slug,b])=>{
+    METRICS.forEach(m=>{ const v=m.get(b); const why = v==null && m.why ? m.why(b) : null;
+      rows.push([b.name,b.code,m.id,m.label, v==null?'':(+v).toFixed(m.fmt===pc?1:(m.fmt===gbp?0:0)),
+        v==null?(why||'not reported'):'', m.prov]); });
+  });
+  const any = Object.values(DATA.boroughs)[0];
+  downloadCSV(`london-ta-atlas_all-boroughs_${asOf(any)}.csv`, rows,
+    'all 33 boroughs, the eleven mapped measures (no spend totals: published files capture an unknown and unequal share of each borough\'s bill)');
+}
+
 // --- print ------------------------------------------------------------
 // Closed <details> do not print their contents, so open them for the
 // duration; the class chooses between the London page and a borough page.
@@ -760,18 +978,20 @@ let _openedForPrint = [];
 function printView(){ window.print(); }
 window.addEventListener('beforeprint', ()=>{
   document.body.classList.toggle('print-borough', !!openSlug);
+  if(openSlug) document.body.insertBefore(document.getElementById('detail'), document.getElementById('panel'));
   _openedForPrint = [...document.querySelectorAll('#method details:not([open])')];
   _openedForPrint.forEach(d=>d.setAttribute('open',''));
-  const url = location.href.split('#')[0] + '#metric=' + cur.id + (openSlug?'&borough='+openSlug:'');
+  const url = siteURL().replace(/\/?$/, '/') + '#metric=' + cur.id + (openSlug?'&borough='+openSlug:'');
   document.getElementById('mapcap').textContent =
     `Shaded by: ${cur.label} · darker is more · grey = no data` +
     (openSlug ? ` · ${DATA.boroughs[openSlug].name} outlined` : '');
   document.getElementById('printfoot').textContent =
     `London Temporary Accommodation Atlas · ${openSlug ? DATA.boroughs[openSlug].name + ' · ' : ''}` +
-    `map showing: ${cur.label} · printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})} · ` +
-    `live version of this page: ${url}`;
+    `printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})} · live version: ${url}`;
 });
 window.addEventListener('afterprint', ()=>{
+  const dp=document.getElementById('detail'), pn=document.getElementById('panel');
+  if(dp.nextElementSibling===pn) pn.after(dp);
   _openedForPrint.forEach(d=>d.removeAttribute('open')); _openedForPrint=[];
   document.body.classList.remove('print-borough');
 });
@@ -793,17 +1013,17 @@ function summary(){
     .filter(([,b])=>b.rates&&b.rates.leased&&b.rates.leased.rate&&!b.rates.leased.mislabelled)
     .map(([s,b])=>[s,b.rates.leased.rate]).sort((a,b)=>b[1]-a[1]);
   document.getElementById('shared').innerHTML = `
-    <p class="note" style="margin-top:0">Boroughs buy the same thing at very
-    different prices, and none of them can see the others' figures.</p>
-    <p class="note"><b>Bed &amp; breakfast, per night</b> — same labelled
-    product: ${rb.map(([s,v])=>`${title(s)} <b>${gbp(v)}</b>`).join(' · ')}</p>
-    <p class="note"><b>A leased unit, per night</b> — the cheaper arrangement:
+    <p class="note" style="margin-top:0">Boroughs pay different rates for the
+    same product, and no borough can see another's rate. Estimates, derived from
+    published payments.</p>
+    <p class="note"><b>Bed and breakfast, per night</b>, same published label:
+    ${rb.map(([s,v])=>`${title(s)} <b>${gbp(v)}</b>`).join(' · ')}</p>
+    <p class="note"><b>A leased home, per night</b>, the cheaper arrangement:
     ${rl.map(([s,v])=>`${title(s)} <b>${gbp(v)}</b>`).join(' · ')}</p>
-    ${opHtml ? '<p class="note" style="margin-bottom:0"><b>The one operator comparison that survives a like-for-like test:</b></p>'+opHtml : ''}
+    ${opHtml ? '<p class="note" style="margin-bottom:0"><b>The one operator whose price can be compared between boroughs on a matching label:</b></p>'+opHtml : ''}
     <p class="note"><b>Four boroughs already share a procurement system.</b>
     Waltham Forest, Redbridge, Enfield and Newham run one dynamic purchasing
-    system between them, with common accreditation. It was built without the
-    Mayor of London.</p>`;
+    system between them, with common accreditation.</p>`;
 }
 
 function title(s){ return (DATA.boroughs[s]||{}).name || s; }
@@ -827,6 +1047,9 @@ function showDetail(slug, moveFocus){
   document.getElementById('pick').value = slug;
   const h = b.households||{}, oa = b.out_of_area||{}, sw = b.bb_six_week||{};
   const stayN = b.stay && b.stay.nightly;
+  const Q = b.quarters || (stayN ? Object.keys(stayN).sort() : []);
+  const trend = k => Object.fromEntries(Q.map(q => [q, (b.households_trend||{})[q] ? (b.households_trend[q][k]) : null]));
+  const days = v => fmt(v)+' days';
   const qk = stayN ? Object.keys(stayN).sort() : [];
   const first = qk.length? stayN[qk[0]] : null, lastv = qk.length? stayN[qk[qk.length-1]] : null;
   const mixOrder = [['nightly','Nightly-paid','#12503f'],['leased','Leased','#74b09d'],
@@ -847,7 +1070,7 @@ function showDetail(slug, moveFocus){
   for(const [k,v] of Object.entries(b.rates||{})){
     if(v.rate==null){ rateSkip.push(NM[k]||k); continue; }
     rateRows += `<tr><td class="k">${NM[k]||k}${v.mislabelled?
-      ' <span class="flag no" style="margin:0">priced per night — not a lease</span>':''}` +
+      ' <span class="flag no" style="margin:0">priced per night, not a lease</span>':''}` +
       `<div class="note" style="margin-top:1px">${v.basis} · ${fmt(v.n_payments)} payments` +
       (v.exclusion_reason ? `<br>${v.exclusion_reason[0].toUpperCase()+v.exclusion_reason.slice(1)}.` : '') +
       `</div></td>` +
@@ -858,37 +1081,43 @@ function showDetail(slug, moveFocus){
   const flags = [
     ad.on_platform ? `<span class="flag ok">On the ADAM platform (${ad.vehicle})</span>` : '',
     ad.wren ? '<span class="flag ok">WREN shared DPS</span>' : '',
-    ad.pays_through ? '<span class="flag n">Pays suppliers through the platform — they are invisible in its published spend</span>' : '',
+    ad.pays_through ? '<span class="flag n">Pays suppliers through the platform, so they do not appear in its published payments</span>' : '',
     sw.over_6_weeks>0 ? `<span class="flag no">${fmt(sw.over_6_weeks)} families in B&amp;B past the 6-week legal limit</span>` : '',
     (sw.bb>0 && sw.with_children===0) ? '<span class="flag ok">No families with children placed in B&amp;B</span>' : '',
   ].filter(Boolean).join('');
 
   document.getElementById('detailBody').innerHTML = `
     <header><h1>${b.name}</h1><p>Temporary accommodation, 31 March 2026</p>
-      <div class="tools"><button type="button" onclick="printView()">Print this borough</button></div></header>
+      <div class="tools"><button type="button" onclick="printView()">Print this borough</button>
+      <button type="button" onclick="downloadBoroughCSV('${slug}')">Download this borough's data (CSV)</button></div></header>
     <section>
       <div class="big">${fmt(h.total)}<span> households · ${fmt((b.children||{}).under18)} children</span></div>
       <div class="bar">${bar}</div>
       <table>${mixRows}</table>
+      ${b.households_trend ? `<table style="margin-top:7px">
+        <tr><td class="k">Households, four quarters</td><td class="v">${spark(trend('total'),Q,fmt,'Households in temporary accommodation')}${fmt(h.total)}</td></tr>
+        <tr><td class="k">of which nightly-paid</td><td class="v">${spark(trend('nightly'),Q,fmt,'Households in nightly-paid accommodation')}${fmt(h.nightly)}</td></tr>
+      </table>` : ''}
     </section>
     ${flags?`<section>${flags}</section>`:''}
     <section>
       <h2>How long people stay</h2>
       <table>
-        <tr><td class="k">Median stay, nightly-paid</td><td class="v">${fmt(lastv)} days</td></tr>
+        <tr><td class="k">Median stay, nightly-paid</td><td class="v">${spark(stayN,Q,days,'Median stay, nightly-paid')}${fmt(lastv)} days</td></tr>
         ${first&&lastv?`<tr><td class="k">Change since Jun 2025</td><td class="v" style="color:${lastv>first?'var(--warn)':'var(--accent)'}">${lastv>first?'+':''}${pc(100*(lastv-first)/first)}</td></tr>`:''}
-        <tr><td class="k">Median stay, leased</td><td class="v">${fmt(last(b.stay&&b.stay.leased))} days</td></tr>
+        <tr><td class="k">Median stay, leased</td><td class="v">${spark(b.stay&&b.stay.leased,Q,days,'Median stay, leased')}${fmt(last(b.stay&&b.stay.leased))} days</td></tr>
+        ${b.stay&&b.stay.bb&&last(b.stay.bb)!=null?`<tr><td class="k">Median stay, B&amp;B</td><td class="v">${spark(b.stay.bb,Q,days,'Median stay, B&B')}${fmt(last(b.stay.bb))} days</td></tr>`:''}
       </table>
       ${bands?`<div class="note" style="margin-top:8px">Time already spent in nightly-paid accommodation</div>
       <table>${bands.map((v,i)=>`<tr><td class="k">${bandLab[i]}</td><td class="v">${fmt(v)} <span style="color:var(--mute);font-weight:400">${pc(100*v/bandTot)}</span></td></tr>`).join('')}</table>`:''}
     </section>
     <section>
-      <h2>Placed outside the borough</h2>
+      <h2>Outside the borough</h2>
       <div class="big">${pc(oa.pct)}<span> ${fmt(oa.total)} households</span></div>
       ${oa.by_type?`<table style="margin-top:6px">${Object.entries(oa.by_type).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
         `<tr><td class="k">${({nightly:'nightly-paid',leased:'leased',bb:'B&amp;B',hostel:'hostel',la_ha:'council/HA'})[k]||k}</td><td class="v">${fmt(v)}</td></tr>`).join('')}</table>`:''}
     </section>
-    ${rateRows?`<section><h2>What it pays per night <span style="font-weight:400;text-transform:none">— inference</span></h2>
+    ${rateRows?`<section><h2>What it pays per night <span style="font-weight:400;text-transform:none">(estimates)</span></h2>
       <table>${rateRows}</table>
       <p class="note">${DATA.london.note} Each figure above says which route produced
       it.${rateSkip.length?' No usable figure for '+
@@ -897,12 +1126,12 @@ function showDetail(slug, moveFocus){
       figure. ${b.name} batches its invoices, so a single payment covers many units and cannot
       be divided into a nightly rate.</p></section>`:'')}
     <section>
-      <h2>Published spend</h2>
+      <h2>Published payments</h2>
       <table>
-        <tr><td class="k">Accommodation payments a year</td><td class="v">${b.spend.annual_all_accom?gbp(b.spend.annual_all_accom):'—'}</td></tr>
+        <tr><td class="k">Payments published, ${b.spend.period||'period not known'}</td><td class="v">${b.spend.total_in_period!=null?gbp(b.spend.total_in_period):'—'}</td></tr>
         ${b.spend.redacted_share?`<tr><td class="k">Paid to unnamed recipients</td><td class="v">${pc(b.spend.redacted_share)}</td></tr>`:''}
       </table>
-      <p class="note">${b.spend.confidence}</p>
+      <p class="note">${b.spend.months_in_period?`A sum over ${b.spend.months_in_period} month${b.spend.months_in_period===1?'':'s'} of published files, not an annual figure. `:''}${b.spend.confidence}</p>
     </section>`;
   const dp = document.getElementById('detail');
   dp.style.display='block';
