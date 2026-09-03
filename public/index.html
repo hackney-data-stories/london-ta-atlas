@@ -4,6 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>London Temporary Accommodation Atlas</title>
+<meta name="description" content="Temporary accommodation across all 33 London boroughs: households, length of stay, children, out-of-area placements and what boroughs pay. Every figure from public data.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="London Temporary Accommodation Atlas">
+<meta property="og:description" content="76,017 households and 96,885 children in temporary accommodation across 33 boroughs. Every figure from public data.">
+<meta property="og:url" content="https://london-ta-atlas.bsg-george.workers.dev">
+<meta property="og:image" content="https://london-ta-atlas.bsg-george.workers.dev/social_card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="London Temporary Accommodation Atlas">
+<meta name="twitter:description" content="76,017 households and 96,885 children in temporary accommodation across 33 boroughs. Every figure from public data.">
+<meta name="twitter:image" content="https://london-ta-atlas.bsg-george.workers.dev/social_card.png">
 <style>
   :root {
     --ink:#1b1b1b; --mute:#666; --line:#e3e3e3; --bg:#fff;
@@ -29,11 +39,23 @@
   select{width:100%;padding:7px 8px;font-size:13px;border:1px solid #ccc;
          border-radius:5px;background:#fff;color:var(--ink);font-family:inherit}
   .prov{margin:8px 0 0;font-size:11px;color:var(--mute);line-height:1.4}
-  .legend{display:flex;align-items:center;gap:0;margin:8px 0 5px}
-  .legend i{flex:1;height:11px;display:block}
-  .legend i:first-child{border-radius:3px 0 0 3px}
-  .legend i:last-child{border-radius:0 3px 3px 0}
+  #dist{display:block;width:100%;height:auto;margin:8px 0 1px}
+  #dist text{font-family:inherit}
   .legend-lab{display:flex;justify-content:space-between;font-size:10.5px;color:var(--mute)}
+  .breaks{font-size:10.5px;color:var(--mute);line-height:1.55;margin:5px 0 0}
+  .breaks b{font-weight:600;color:var(--ink);white-space:nowrap}
+  .warnmark{display:block;font-size:10.5px;color:var(--warn);line-height:1.35;
+            margin-left:15px}
+  .intro{font-size:12px;color:#3a3a3a;line-height:1.5;margin:0}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+           overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  table.all td{padding:2.5px 0;border-bottom:1px solid #f2f2f2;font-size:12px}
+  table.all tr:last-child td{border-bottom:0}
+  table.all i{display:inline-block;width:9px;height:9px;border-radius:2px;
+              margin-right:6px;vertical-align:-1px;border:1px solid rgba(0,0,0,.12)}
+  .linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--ink);
+           cursor:pointer;text-align:left}
+  .linkbtn:hover,.linkbtn:focus{color:var(--accent);text-decoration:underline}
   table{width:100%;border-collapse:collapse;font-size:12.5px}
   td{padding:3px 0;vertical-align:top}
   td.k{color:var(--mute);padding-right:10px}
@@ -60,6 +82,14 @@
             transition:fill .18s}
   #map path:hover{stroke:#111;stroke-width:1.6;stroke-opacity:1}
   #map path.sel{stroke:#111;stroke-width:2.2;stroke-opacity:1}
+  #map path:focus{outline:none;stroke:#111;stroke-width:2.4;stroke-opacity:1}
+  #map path:focus-visible{stroke:#0b6b57;stroke-width:3;stroke-opacity:1}
+  /* Borough names. paint-order puts the white halo behind the glyphs so a
+     name stays readable over the darkest end of either ramp. */
+  #labels{pointer-events:none}
+  #labels text{font-family:inherit;font-weight:600;fill:#1f2b28;
+               paint-order:stroke;stroke:rgba(255,255,255,.88);
+               stroke-width:2.6px;stroke-linejoin:round}
   #tip{position:absolute;z-index:20;pointer-events:none;display:none;
        background:rgba(20,20,20,.93);color:#fff;padding:7px 10px;border-radius:6px;
        font-size:12.5px;line-height:1.35;max-width:230px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
@@ -72,10 +102,15 @@
   @media (max-width: 760px){
     html,body{height:auto;overflow:auto}
     #map{position:relative;height:46vh;min-height:300px;width:100%}
-    .pane{position:static;width:auto;max-height:none;margin:10px;
+    /* relative, not static: button.x is absolutely positioned and would
+       otherwise anchor to the viewport and float over the map. */
+    .pane{position:relative;width:auto;max-height:none;margin:10px;
           border-radius:8px;overflow:visible}
     #detail{display:none}
     #detail.open{display:block}
+    /* At 375px the whole of London is 375px wide: a legible borough name
+       would cover its borough. The panel and the table carry the names. */
+    #labels{display:none}
     button.x{top:14px;right:14px;font-size:24px}
     .big{font-size:24px}
   }
@@ -91,15 +126,48 @@
     <p>33 boroughs · every figure from public data · <span id="asof"></span></p>
   </header>
   <section>
+    <p class="intro">Every borough is shaded by the measure you choose below;
+    darker is more. Click a borough — or tab to it — for its full picture.
+    Grey means that borough did not submit the return.</p>
+    <details>
+      <summary>How to read this map</summary>
+      <div class="prov">
+        <p style="margin:7px 0 0"><b>The colours are quantiles.</b> Boroughs
+        are sorted and cut into equally sized groups, so each shade holds
+        roughly the same number of boroughs. Equal steps in colour are
+        therefore not equal steps in value; the strip under the menu shows
+        where every borough actually sits.</p>
+        <p style="margin:7px 0 0"><b>Grey is data, not a gap in the map.</b>
+        Six boroughs failed to submit at least one quarterly return and Ealing
+        submitted one in four. A council that cannot say how many households it
+        has in temporary accommodation is telling you something.</p>
+        <p style="margin:7px 0 0"><b>Measured or inferred is marked on every
+        measure.</b> Household counts, stays, children and out-of-area
+        placements are MHCLG statutory returns. Nightly rates are decoded from
+        each council's own published payments and stay inference until an
+        officer checks one against an invoice.</p>
+        <p style="margin:7px 0 0"><b>A blank rate is deliberate.</b> Where a
+        borough batches its invoices, one payment covers many units and cannot
+        be turned into a nightly rate, so none is shown.</p>
+      </div>
+    </details>
+  </section>
+  <section>
     <h2>Show</h2>
-    <select id="metric"></select>
-    <div class="legend" id="legend"></div>
+    <select id="metric" aria-label="Choose the measure to map"></select>
+    <svg id="dist" viewBox="0 0 300 44" role="img"
+         aria-label="Distribution of the selected measure across the 33 boroughs"></svg>
     <div class="legend-lab"><span id="lo"></span><span id="hi"></span></div>
+    <p class="breaks" id="breaks"></p>
     <p class="prov" id="prov"></p>
+    <details>
+      <summary>All 33 boroughs, as a table</summary>
+      <table class="all" id="alltable"></table>
+    </details>
   </section>
   <section>
     <h2>Borough</h2>
-    <select id="pick"><option value="">Choose a borough…</option></select>
+    <select id="pick" aria-label="Choose a borough"><option value="">Choose a borough…</option></select>
   </section>
   <section id="summary"></section>
   <section>
@@ -130,11 +198,20 @@
       </p>
     </details>
     <p class="prov" id="sources"></p>
+    <p class="prov">
+      Contains public sector information licensed under the
+      <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" target="_blank" rel="noopener">Open&nbsp;Government&nbsp;Licence&nbsp;v3.0</a>.
+      Boundaries: Source: Office for National Statistics licensed under the
+      Open Government Licence v.3.0. Contains OS data &copy; Crown copyright
+      and database right 2026.<br>
+      Code <a href="https://github.com/hackney-data-stories/london-ta-atlas" target="_blank" rel="noopener">on GitHub</a>, MIT licensed —
+      corrections welcome as issues.
+    </p>
   </section>
 </div>
 
-<div class="pane" id="detail">
-  <button class="x" onclick="closeDetail()">×</button>
+<div class="pane" id="detail" role="region" aria-label="Selected borough" tabindex="-1">
+  <button class="x" onclick="closeDetail()" aria-label="Close borough panel">×</button>
   <div id="detailBody"></div>
 </div>
 
@@ -186,10 +263,35 @@ const METRICS = [
     fmt:gbp },
   { id:'rate_leased', label:'Cost of a leased unit per night',
     unit:'£/night', prov:'Median monthly payment ÷ 30.44. INFERENCE. Blank where unusable.',
-    get:b => b.rates && b.rates.leased ? b.rates.leased.rate : null, fmt:gbp },
+    get:b => (b.rates && b.rates.leased && !b.rates.leased.mislabelled) ? b.rates.leased.rate : null,
+    fmt:gbp,
+    why:b => (b.rates && b.rates.leased && b.rates.leased.exclusion_reason) || null },
 ];
 
+function whyNull(slug){ return (cur.why && cur.why(DATA.boroughs[slug]||{})) || null; }
+
 function last(o){ if(!o) return null; const k=Object.keys(o).sort(); return o[k[k.length-1]]; }
+
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, text){
+  const e = document.createElementNS(NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(text != null) e.textContent = text;
+  return e;
+}
+
+// Names that will not fit on one line inside their borough. Everything
+// else is drawn as published.
+const SHORT = {
+  'Barking and Dagenham'  : ['Barking &','Dagenham'],
+  'City of London'        : ['City'],
+  'Hammersmith and Fulham': ['Hammersmith','& Fulham'],
+  'Kensington and Chelsea': ['Kensington','& Chelsea'],
+  'Kingston upon Thames'  : ['Kingston'],
+  'Richmond upon Thames'  : ['Richmond'],
+  'Tower Hamlets'         : ['Tower','Hamlets'],
+  'Waltham Forest'        : ['Waltham','Forest'],
+};
 
 // openSlug is declared here rather than beside showDetail because
 // paint() reads it, and the standalone build calls init() synchronously
@@ -247,62 +349,242 @@ function init(){
   });
 
   const P = project();
-  const ns='http://www.w3.org/2000/svg';
-  svg = document.createElementNS(ns,'svg');
-  svg.setAttribute('viewBox',`0 0 ${P.W} ${P.H}`);
-  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  svg = el('svg',{ viewBox:`0 0 ${P.W} ${P.H}`,
+                   preserveAspectRatio:'xMidYMid meet',
+                   role:'group',
+                   'aria-label':'Map of the 33 London boroughs. Each borough is a button.' });
+  // Shapes and labels are separate groups so that raising the selected
+  // borough (showDetail re-appends it within its own group) cannot lift
+  // it above the names.
+  const shapes = el('g',{id:'shapes'});
   const tip = document.getElementById('tip');
   GEO.features.forEach(f=>{
     let d='';
     eachRing(f, r => { d += 'M' + r.map(c=>P.to(c).map(n=>n.toFixed(1)).join(' ')).join('L') + 'Z'; });
-    const p = document.createElementNS(ns,'path');
-    p.setAttribute('d', d);
+    const p = el('path',{ d:d, role:'button', tabindex:'0' });
     p.dataset.slug = f.properties.slug;
     p.addEventListener('mousemove', e=>{
       if(window.matchMedia('(hover: none)').matches) return;
-      const v = f.properties[cur.id], fm = cur.fmt||fmt;
-      tip.innerHTML = `<b>${f.properties.name}</b><br>${cur.label}<br><b>${v==null?'no data':fm(v)}</b>`;
-      tip.style.display='block';
-      tip.style.left = Math.min(e.clientX+14, innerWidth-250)+'px';
-      tip.style.top  = (e.clientY+14)+'px';
+      showTip(f, e.clientX+14, e.clientY+14);
     });
-    p.addEventListener('mouseleave', ()=>{ tip.style.display='none'; });
+    p.addEventListener('mouseleave', hideTip);
     p.addEventListener('click', ()=>showDetail(f.properties.slug));
+    // Keyboard: the paths are the only route to a borough on the map, so
+    // they answer Enter and Space like the buttons they claim to be.
+    p.addEventListener('keydown', e=>{
+      if(e.key==='Enter' || e.key===' ' || e.key==='Spacebar'){
+        e.preventDefault(); showDetail(f.properties.slug, true);
+      }
+    });
+    p.addEventListener('focus', ()=>{
+      // On a phone a tap focuses the path as well as opening the panel,
+      // and a tooltip with no pointer to follow just sits there.
+      if(window.matchMedia('(hover: none)').matches) return;
+      const r = p.getBoundingClientRect();
+      showTip(f, r.left + r.width/2 - 90, r.top + r.height/2 + 10);
+    });
+    p.addEventListener('blur', hideTip);
     PATHS[f.properties.slug]=p;
-    svg.appendChild(p);
+    shapes.appendChild(p);
   });
+  svg.appendChild(shapes);
   document.getElementById('map').appendChild(svg);
+  drawLabels(P);                 // needs the svg in the document: getBBox
+  applyHash({first:true});       // a shared link arrives with a view in it
   paint();
   summary();
+  window.addEventListener('hashchange', ()=>applyHash({}));
+}
+
+function showTip(f, x, y){
+  const tip = document.getElementById('tip');
+  const v = f.properties[cur.id], fm = cur.fmt||fmt;
+  const why = v==null ? whyNull(f.properties.slug) : null;
+  tip.innerHTML = `<b>${f.properties.name}</b><br>${cur.label}<br><b>${v==null?(why?'excluded':'no data'):fm(v)}</b>` +
+    (why ? `<br><span style="opacity:.8">${why}</span>` : '');
+  tip.style.display='block';
+  tip.style.left = Math.max(6, Math.min(x, innerWidth-250))+'px';
+  tip.style.top  = Math.max(6, y)+'px';
+}
+function hideTip(){ document.getElementById('tip').style.display='none'; }
+
+// --- borough names -------------------------------------------------
+// Anchor each name at the area-weighted centroid of the borough's
+// largest ring, then drop any name that would collide with one already
+// placed, largest borough first. Cartographers' usual compromise: the
+// small inner boroughs lose their label rather than the map losing its
+// legibility, and every name is still in the table and the tooltip.
+function ringCentroid(r){
+  let a=0, x=0, y=0;
+  for(let i=0,j=r.length-1;i<r.length;j=i++){
+    const f = r[j][0]*r[i][1] - r[i][0]*r[j][1];
+    a += f; x += (r[j][0]+r[i][0])*f; y += (r[j][1]+r[i][1])*f;
+  }
+  a /= 2;
+  return a ? [x/(6*a), y/(6*a)] : r[0];
+}
+function ringArea(r){
+  let a=0;
+  for(let i=0,j=r.length-1;i<r.length;j=i++) a += r[j][0]*r[i][1] - r[i][0]*r[j][1];
+  return Math.abs(a/2);
+}
+
+function drawLabels(P){
+  const g = el('g',{id:'labels','aria-hidden':'true'});
+  svg.appendChild(g);
+  const items = GEO.features.map(f=>{
+    let ring=null, area=0;
+    eachRing(f, r=>{ const pr=r.map(c=>P.to(c)), a=ringArea(pr);
+                     if(a>area){ area=a; ring=pr; } });
+    return ring ? {name:f.properties.name, area, c:ringCentroid(ring)} : null;
+  }).filter(it=>it && isFinite(it.c[0]) && isFinite(it.c[1]))
+    .sort((a,b)=>b.area-a.area);
+
+  const placed = [];
+  items.forEach(it=>{
+    const lines = SHORT[it.name] || [it.name];
+    const fs = Math.max(7.5, Math.min(12, Math.sqrt(it.area)/3.2));
+    const x  = it.c[0].toFixed(1);
+    const t  = el('text',{ x, y:(it.c[1] - (lines.length-1)*fs*0.52).toFixed(1),
+                           'font-size':fs.toFixed(1), 'text-anchor':'middle' });
+    lines.forEach((ln,i)=> t.appendChild(el('tspan',{ x, dy: i ? (fs*1.05).toFixed(1) : 0 }, ln)));
+    g.appendChild(t);
+    let bb=null; try { bb = t.getBBox(); } catch(e) {}
+    if(!bb || !bb.width) return;                       // never measured: leave it
+    const box = {x:bb.x-1.5, y:bb.y-1, w:bb.width+3, h:bb.height+2};
+    const clash = placed.some(q => !(box.x+box.w < q.x || q.x+q.w < box.x ||
+                                     box.y+box.h < q.y || q.y+q.h < box.y));
+    if(clash) g.removeChild(t); else placed.push(box);
+  });
+}
+
+function classify(){
+  const RAMP = cur.good ? RAMP_GOOD : RAMP_BAD;
+  const vals = GEO.features.map(f=>f.properties[cur.id]).filter(v=>v!=null).sort((a,b)=>a-b);
+  const stops=[];
+  for(let i=1;i<RAMP.length && vals.length;i++){
+    const v=vals[Math.floor(vals.length*i/RAMP.length)];
+    if(v>vals[0] && (!stops.length || v>stops[stops.length-1])) stops.push(v);
+  }
+  return {RAMP, vals, stops};
 }
 
 function paint(){
-  const RAMP = cur.good ? RAMP_GOOD : RAMP_BAD;
-  const vals = GEO.features.map(f=>f.properties[cur.id]).filter(v=>v!=null).sort((a,b)=>a-b);
+  const {RAMP, vals, stops} = classify();
   if(!vals.length) return;
-  const stops=[];
-  for(let i=1;i<RAMP.length;i++){
-    const v=vals[Math.floor(vals.length*i/RAMP.length)];
-    if(!stops.length || v>stops[stops.length-1]) stops.push(v);
-  }
   const colour = v => {
     if(v==null) return '#b9c2c4';
     let i=0; while(i<stops.length && v>=stops[i]) i++;
     return RAMP[Math.min(i,RAMP.length-1)];
   };
-  GEO.features.forEach(f=>{
-    const p=PATHS[f.properties.slug];
-    if(p) p.setAttribute('fill', colour(f.properties[cur.id]));
-  });
   const f = cur.fmt||fmt;
-  document.getElementById('legend').innerHTML =
-    RAMP.slice(0,stops.length+1).map(c=>`<i style="background:${c}"></i>`).join('')
-    + '<i style="background:#b9c2c4;max-width:18px" title="no data"></i>';
+  GEO.features.forEach(x=>{
+    const p=PATHS[x.properties.slug];
+    if(!p) return;
+    const v = x.properties[cur.id];
+    p.setAttribute('fill', colour(v));
+    const why = v==null ? whyNull(x.properties.slug) : null;
+    p.setAttribute('aria-label',
+      `${x.properties.name}. ${cur.label}: ${v==null?(why?'excluded — '+why:'no data'):f(v)}.`);
+  });
+  drawDist(vals, stops, RAMP, f);
+  drawTable(colour, f);
   document.getElementById('lo').textContent = f(vals[0]);
-  document.getElementById('hi').textContent = f(vals[vals.length-1]) + '   ·  grey = no data';
+  document.getElementById('hi').textContent = f(vals[vals.length-1]) + '  ·  grey = no data';
+  document.getElementById('breaks').innerHTML =
+    `${stops.length+1} quantile classes — equal numbers of boroughs, not equal
+     steps in value. Class boundaries at ` +
+    stops.map(s=>`<b>${f(s)}</b>`).join(' · ') + '.';
   document.getElementById('prov').innerHTML =
     cur.prov + (cur.good ? ' <b>Darker is better here.</b>' : '');
   if(openSlug) showDetail(openSlug);
+  writeHash();
+}
+
+// The strip answers the question the swatch row could not: where the
+// class boundaries fall, and where each of the 33 boroughs sits between
+// them. One tick per borough on a linear value axis.
+function drawDist(vals, stops, RAMP, f){
+  const d = document.getElementById('dist');
+  while(d.firstChild) d.removeChild(d.firstChild);
+  const lo = vals[0], hi = vals[vals.length-1];
+  const X  = v => lo===hi ? 150 : 3 + (v-lo)/(hi-lo)*294;
+  const edges = [lo].concat(stops, [hi]);
+  for(let i=0;i<edges.length-1;i++)
+    d.appendChild(el('rect',{ x:X(edges[i]).toFixed(2), y:2,
+      width:Math.max(0.6, X(edges[i+1])-X(edges[i])).toFixed(2),
+      height:11, fill:RAMP[i] }));
+  d.appendChild(el('rect',{x:3,y:2,width:294,height:11,fill:'none',
+    stroke:'rgba(0,0,0,.2)','stroke-width':.7}));
+  vals.forEach(v=>d.appendChild(el('line',{ x1:X(v).toFixed(2), x2:X(v).toFixed(2),
+    y1:16, y2:24, stroke:'#5c6b66', 'stroke-width':1, 'stroke-opacity':.75 })));
+
+  const sel = openSlug && GEO.features.find(x=>x.properties.slug===openSlug);
+  const sv  = sel ? sel.properties[cur.id] : null;
+  if(sv != null){
+    const x = X(sv);
+    d.appendChild(el('line',{ x1:x.toFixed(2), x2:x.toFixed(2), y1:0, y2:26,
+      stroke:'#111', 'stroke-width':1.5 }));
+    d.appendChild(el('text',{ x:Math.max(3,Math.min(297,x)).toFixed(2), y:38,
+      'font-size':10.5, fill:'#111',
+      'text-anchor': x<70 ? 'start' : (x>230 ? 'end' : 'middle') },
+      `${sel.properties.name} ${f(sv)}`));
+  } else {
+    d.appendChild(el('text',{ x:150, y:38, 'font-size':10.5, fill:'#8a8a8a',
+      'text-anchor':'middle' }, sel
+        ? sel.properties.name + (whyNull(openSlug) ? ' — excluded from this comparison'
+                                                   : ' — no figure for this measure')
+        : 'one tick per borough — pick one to mark it'));
+  }
+}
+
+// Also the accessible fallback: the SVG is a set of buttons a screen
+// reader can reach, but a sorted table is how most people would rather
+// read 33 numbers, and it names the boroughs whose label the map dropped.
+function drawTable(colour, f){
+  const rows = GEO.features
+    .map(x=>({slug:x.properties.slug, name:x.properties.name, v:x.properties[cur.id]}))
+    .sort((a,b)=> (a.v==null)-(b.v==null) || (b.v-a.v) || a.name.localeCompare(b.name));
+  const t = document.getElementById('alltable');
+  t.innerHTML = `<caption class="sr-only">${cur.label}, all 33 boroughs</caption>` +
+    rows.map(r=>`<tr><td><i style="background:${colour(r.v)}"></i>` +
+      `<button class="linkbtn" data-slug="${r.slug}">${r.name}</button>` +
+      (r.v==null && whyNull(r.slug) ? `<span class="warnmark">${whyNull(r.slug)}</span>` : '') +
+      `</td>` +
+      `<td class="v">${r.v==null
+        ? `<span style="color:var(--mute);font-weight:400">${whyNull(r.slug)?'excluded':'no data'}</span>`
+        : f(r.v)}</td></tr>`).join('');
+  t.querySelectorAll('button').forEach(bn =>
+    bn.addEventListener('click', ()=>showDetail(bn.dataset.slug, true)));
+}
+
+// --- shareable views ------------------------------------------------
+// #metric=sixweek&borough=westminster. replaceState keeps the address bar
+// in step without filling the back button; on file:// (the emailed
+// standalone copy) it throws, so fall back to setting the hash.
+function writeHash(){
+  const want = '#metric=' + cur.id + (openSlug ? '&borough=' + openSlug : '');
+  if(location.hash === want) return;
+  try { history.replaceState(null, '', want); }
+  catch(e) { location.hash = want; }
+}
+function applyHash(opt){
+  const q = {};
+  location.hash.replace(/^#/,'').split('&').forEach(part=>{
+    const i = part.indexOf('=');
+    if(i>0) q[decodeURIComponent(part.slice(0,i))] = decodeURIComponent(part.slice(i+1));
+  });
+  const mi = METRICS.findIndex(m=>m.id===q.metric);
+  const metricChanged = mi>=0 && METRICS[mi]!==cur;
+  if(metricChanged){ cur = METRICS[mi]; document.getElementById('metric').value = mi; }
+  const slug = (q.borough && DATA.boroughs[q.borough]) ? q.borough : null;
+  if(opt.first){                       // init paints once, straight after
+    if(slug) openSlug = slug;
+    return;
+  }
+  if(metricChanged) paint();
+  if(slug && slug!==openSlug) showDetail(slug);
+  else if(!slug && openSlug) closeDetail();
 }
 
 function summary(){
@@ -360,10 +642,13 @@ function closeDetail(){
   dp.style.display='none'; dp.classList.remove('open');
   document.getElementById('pick').value='';
   Object.values(PATHS).forEach(p=>p.classList.remove('sel'));
+  if(svg) paint();
 }
 
-function showDetail(slug){
+function showDetail(slug, moveFocus){
   const b = DATA.boroughs[slug]; if(!b) return;
+  hideTip();
+  const wasOpen = openSlug;
   openSlug = slug;
   Object.values(PATHS).forEach(p=>p.classList.remove('sel'));
   if(PATHS[slug]){ PATHS[slug].classList.add('sel'); PATHS[slug].parentNode.appendChild(PATHS[slug]); }
@@ -391,7 +676,9 @@ function showDetail(slug){
     if(v.rate==null){ rateSkip.push(NM[k]||k); continue; }
     rateRows += `<tr><td class="k">${NM[k]||k}${v.mislabelled?
       ' <span class="flag no" style="margin:0">priced per night — not a lease</span>':''}` +
-      `<div class="note" style="margin-top:1px">${v.basis} · ${fmt(v.n_payments)} payments</div></td>` +
+      `<div class="note" style="margin-top:1px">${v.basis} · ${fmt(v.n_payments)} payments` +
+      (v.exclusion_reason ? `<br>${v.exclusion_reason[0].toUpperCase()+v.exclusion_reason.slice(1)}.` : '') +
+      `</div></td>` +
       `<td class="v">${gbp(v.rate)}</td></tr>`;
   }
 
@@ -448,9 +735,21 @@ function showDetail(slug){
   dp.style.display='block';
   dp.classList.add('open');
   dp.scrollTop=0;
+  writeHash();
+  // paint() re-renders the open panel; only redraw the strip's marker
+  // when the selection itself changed, or the two recurse.
+  if(wasOpen !== slug && typeof drawDist === 'function' && svg) paintMarker();
+  if(moveFocus) dp.focus();
   // on a stacked phone layout the panel appears below the fold
   if(window.matchMedia('(max-width: 760px)').matches)
     dp.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+// Recompute just the class breaks and redraw the strip, without the
+// full repaint that would call back into showDetail.
+function paintMarker(){
+  const {RAMP, vals, stops} = classify();
+  if(vals.length) drawDist(vals, stops, RAMP, cur.fmt||fmt);
 }
 </script>
 </body>
