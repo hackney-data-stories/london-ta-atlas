@@ -25,6 +25,23 @@ All Open Government Licence:
 - ONS Open Geography Portal, Local Authority Districts Dec 2024
 - Access provider site and Find a Tender notices (ADAM adoption)
 
+## Licence and attribution
+
+**Code:** MIT — see `LICENSE`. Reuse it, fork it, adapt it for your own
+authority.
+
+**Data:** Open Government Licence v3.0, and it stays that way. If you
+reuse `public/ta_map.json` or `public/london_boroughs.geojson`, carry
+these:
+
+> Contains public sector information licensed under the Open Government
+> Licence v3.0.
+>
+> Source: Office for National Statistics licensed under the Open
+> Government Licence v.3.0.
+>
+> Contains OS data © Crown copyright and database right 2026.
+
 ## What this map deliberately does not do
 
 - **It does not rank boroughs on spend.** Each borough's published
