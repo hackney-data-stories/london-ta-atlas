@@ -64,6 +64,21 @@
        background:rgba(20,20,20,.93);color:#fff;padding:7px 10px;border-radius:6px;
        font-size:12.5px;line-height:1.35;max-width:230px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
   #tip b{font-weight:650}
+
+  /* Phones: the panels are absolutely positioned over a full-height map,
+     which on a 375px screen means the map is entirely hidden behind
+     them. Stack instead — map first at a fixed height, panels below in
+     normal flow, page scrolls. */
+  @media (max-width: 760px){
+    html,body{height:auto;overflow:auto}
+    #map{position:relative;height:46vh;min-height:300px;width:100%}
+    .pane{position:static;width:auto;max-height:none;margin:10px;
+          border-radius:8px;overflow:visible}
+    #detail{display:none}
+    #detail.open{display:block}
+    button.x{top:14px;right:14px;font-size:24px}
+    .big{font-size:24px}
+  }
 </style>
 </head>
 <body>
@@ -244,6 +259,7 @@ function init(){
     p.setAttribute('d', d);
     p.dataset.slug = f.properties.slug;
     p.addEventListener('mousemove', e=>{
+      if(window.matchMedia('(hover: none)').matches) return;
       const v = f.properties[cur.id], fm = cur.fmt||fmt;
       tip.innerHTML = `<b>${f.properties.name}</b><br>${cur.label}<br><b>${v==null?'no data':fm(v)}</b>`;
       tip.style.display='block';
@@ -340,7 +356,8 @@ function title(s){ return (DATA.boroughs[s]||{}).name || s; }
 
 function closeDetail(){
   openSlug=null;
-  document.getElementById('detail').style.display='none';
+  const dp=document.getElementById('detail');
+  dp.style.display='none'; dp.classList.remove('open');
   document.getElementById('pick').value='';
   Object.values(PATHS).forEach(p=>p.classList.remove('sel'));
 }
@@ -427,8 +444,13 @@ function showDetail(slug){
       </table>
       <p class="note">${b.spend.confidence}</p>
     </section>`;
-  document.getElementById('detail').style.display='block';
-  document.getElementById('detail').scrollTop=0;
+  const dp = document.getElementById('detail');
+  dp.style.display='block';
+  dp.classList.add('open');
+  dp.scrollTop=0;
+  // on a stacked phone layout the panel appears below the fold
+  if(window.matchMedia('(max-width: 760px)').matches)
+    dp.scrollIntoView({behavior:'smooth', block:'start'});
 }
 </script>
 </body>

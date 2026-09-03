@@ -3,19 +3,7 @@
 A borough-level map of temporary accommodation across all 33 London
 boroughs, built entirely from public data.
 
-**Live site:** (add the URL once connected)
-
-## Deploying
-
-Site files are in `public/`. Two Cloudflare routes both work:
-
-- **Workers** (the current dashboard flow): `wrangler.jsonc` declares
-  `public/` as static assets. Deploy command `npx wrangler deploy`,
-  build command blank.
-- **Pages** (legacy flow): framework preset None, build command blank,
-  build output directory `public`.
-
-There is no build step either way — the files are already the site.
+**Live site:** (add the Pages URL once connected)
 
 ## What it shows
 
