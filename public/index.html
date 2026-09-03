@@ -56,6 +56,27 @@
   .linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--ink);
            cursor:pointer;text-align:left}
   .linkbtn:hover,.linkbtn:focus{color:var(--accent);text-decoration:underline}
+  /* The case: six views in the order of the argument. Each is a button
+     that sets the map, so the reader never has to find the menu. */
+  ol.steps{list-style:none;margin:9px 0 0;padding:0;counter-reset:step}
+  ol.steps li{counter-increment:step;margin:0 0 4px}
+  .step{display:flex;gap:8px;width:100%;background:none;border:1px solid transparent;
+        border-radius:6px;padding:5px 7px 5px 5px;font:inherit;font-size:12px;line-height:1.4;
+        color:var(--ink);text-align:left;cursor:pointer}
+  .step::before{content:counter(step);flex:0 0 17px;height:17px;border-radius:50%;
+        background:#eee;color:#555;font-size:10.5px;font-weight:650;text-align:center;
+        line-height:17px;margin-top:1px}
+  .step:hover{background:#f4f6f5}
+  .step:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .step.on{background:#e6f2ee;border-color:#c5ded5}
+  .step.on::before{background:var(--accent);color:#fff}
+  .step>span{flex:1;min-width:0}
+  .step b{font-weight:650}
+  .step .w{color:var(--warn)}
+  .tools{display:flex;gap:10px;margin-top:6px}
+  .tools button{background:none;border:0;padding:0;font:inherit;font-size:11.5px;
+        color:var(--accent);cursor:pointer;text-decoration:underline}
+  .print-only{display:none}
   table{width:100%;border-collapse:collapse;font-size:12.5px}
   td{padding:3px 0;vertical-align:top}
   td.k{color:var(--mute);padding-right:10px}
@@ -114,21 +135,94 @@
     button.x{top:14px;right:14px;font-size:24px}
     .big{font-size:24px}
   }
+
+  /* Print: committee papers are PDFs. One A4 page — the map on top with
+     the chosen borough outlined, then either the case (London) or the
+     borough's own panel in two columns, then the method and sources.
+     Screen chrome goes; the choropleth colours must survive, so
+     print-color-adjust is exact. Declared after the phone rules on
+     purpose: a printed A4 page is narrower than the phone breakpoint. */
+  @media print{
+    @page{size:A4 portrait;margin:9mm 10mm}
+    html,body{height:auto;overflow:visible;background:#fff}
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:10px;
+         display:flex;flex-direction:column}
+    #map{position:relative;order:0;height:84mm;min-height:0;width:100%;background:#fff;
+         break-after:avoid}
+    body.print-borough #map{height:62mm}
+    #map path{cursor:default;transition:none}
+    #labels{display:block}
+    #tip,button.x,select,#dist,.legend-lab,.breaks,.tools,#howto,#pickwrap,
+    #alltable-wrap,#explore,#shared-wrap{display:none !important}
+    .pane{position:static;width:auto;max-height:none;box-shadow:none;border:0;
+          border-radius:0;font-size:10px;overflow:visible;margin:0;background:#fff}
+    /* the id rules above set screen widths; they outrank .pane */
+    #panel,#detail{width:auto}
+    #mapcap{order:1;margin:0;border:0;padding:2px 0 0;text-align:center;font-size:9px}
+    #panel{order:3} #detail{order:2;display:none}
+    #case,#method{column-count:2;column-gap:8mm}
+    #case h2,#caseHead,#method h2,#method .print-only{column-span:all}
+    body.print-borough #detail{display:block}
+    body.print-borough #panel section:not(#method){display:none}
+    body.print-borough #panel header{display:none}
+    .pane header{padding:3px 0 5px}
+    .pane section{padding:5px 0;break-inside:avoid}
+    .pane h1{font-size:14px}
+    .big{font-size:18px}
+    #detailBody{column-count:2;column-gap:8mm;column-fill:balance}
+    #detailBody header{column-span:all;border-bottom:1px solid #ccc}
+    #detailBody section{border-bottom:0;padding:3px 0 5px}
+    #detailBody table{font-size:10px} #detailBody td{padding:1.5px 0}
+    #detailBody .note{font-size:9px;line-height:1.3;margin-top:3px}
+    ol.steps li{margin:0 0 2px}
+    .step{border:0;padding:2px 0;cursor:default;font-size:10px;line-height:1.35}
+    .step::before{background:#ddd}
+    .step.on{background:none}
+    #method .prov{font-size:9px;line-height:1.35;margin-top:5px}
+    details>summary{display:none}
+    .print-only{display:block;font-size:8.5px;color:#555;border-top:1px solid #ccc;
+                margin-top:6px;padding-top:3px;line-height:1.35}
+    a{color:inherit;text-decoration:none}
+  }
 </style>
 </head>
 <body>
 <div id="map"></div>
+<p class="print-only" id="mapcap"></p>
 <div id="tip"></div>
 
 <div class="pane" id="panel">
   <header>
     <h1>London Temporary Accommodation Atlas</h1>
     <p>33 boroughs · every figure from public data · <span id="asof"></span></p>
+    <div class="tools"><button type="button" onclick="printView()">Print this page</button></div>
   </header>
-  <section>
-    <p class="intro">Every borough is shaded by the measure you choose below;
-    darker is more. Click a borough — or tab to it — for its full picture.
-    Grey means that borough did not submit the return.</p>
+  <section id="case">
+    <h2>The case, in six views</h2>
+    <div class="big" id="caseHead"></div>
+    <ol class="steps" id="steps"></ol>
+  </section>
+  <section id="explore">
+    <h2>Explore any measure</h2>
+    <p class="intro" style="margin-bottom:7px">Every borough is shaded by the
+    measure chosen here; darker is more. Click a borough — or tab to it — for
+    its full picture. Grey means that borough did not submit the return.</p>
+    <select id="metric" aria-label="Choose the measure to map"></select>
+    <svg id="dist" viewBox="0 0 300 44" role="img"
+         aria-label="Distribution of the selected measure across the 33 boroughs"></svg>
+    <div class="legend-lab"><span id="lo"></span><span id="hi"></span></div>
+    <p class="breaks" id="breaks"></p>
+    <p class="prov" id="prov"></p>
+    <details id="alltable-wrap">
+      <summary>All 33 boroughs, as a table</summary>
+      <table class="all" id="alltable"></table>
+    </details>
+  </section>
+  <section id="pickwrap">
+    <h2>Borough</h2>
+    <select id="pick" aria-label="Choose a borough"><option value="">Choose a borough…</option></select>
+  </section>
+  <section id="howto">
     <details>
       <summary>How to read this map</summary>
       <div class="prov">
@@ -152,29 +246,11 @@
       </div>
     </details>
   </section>
-  <section>
-    <h2>Show</h2>
-    <select id="metric" aria-label="Choose the measure to map"></select>
-    <svg id="dist" viewBox="0 0 300 44" role="img"
-         aria-label="Distribution of the selected measure across the 33 boroughs"></svg>
-    <div class="legend-lab"><span id="lo"></span><span id="hi"></span></div>
-    <p class="breaks" id="breaks"></p>
-    <p class="prov" id="prov"></p>
-    <details>
-      <summary>All 33 boroughs, as a table</summary>
-      <table class="all" id="alltable"></table>
-    </details>
-  </section>
-  <section>
-    <h2>Borough</h2>
-    <select id="pick" aria-label="Choose a borough"><option value="">Choose a borough…</option></select>
-  </section>
-  <section id="summary"></section>
-  <section>
+  <section id="shared-wrap">
     <h2>Why this is a shared problem</h2>
     <div id="shared"></div>
   </section>
-  <section>
+  <section id="method">
     <h2>Method and confidence</h2>
     <p class="prov">
       Household counts, length of stay, children and out-of-area placements are
@@ -207,6 +283,7 @@
       Code <a href="https://github.com/hackney-data-stories/london-ta-atlas" target="_blank" rel="noopener">on GitHub</a>, MIT licensed —
       corrections welcome as issues.
     </p>
+    <p class="print-only" id="printfoot"></p>
   </section>
 </div>
 
@@ -393,6 +470,7 @@ function init(){
   applyHash({first:true});       // a shared link arrives with a view in it
   paint();
   summary();
+  markStep();
   window.addEventListener('hashchange', ()=>applyHash({}));
 }
 
@@ -498,6 +576,7 @@ function paint(){
   document.getElementById('prov').innerHTML =
     cur.prov + (cur.good ? ' <b>Darker is better here.</b>' : '');
   if(openSlug) showDetail(openSlug);
+  markStep();
   writeHash();
 }
 
@@ -587,25 +666,118 @@ function applyHash(opt){
   else if(!slug && openSlug) closeDetail();
 }
 
-function summary(){
-  const B = Object.values(DATA.boroughs);
+// London-wide figures used by the case and the shared-problem panel.
+// Plain sums of published borough values, counts of boroughs, and the
+// min/max already shown in the legend — display arithmetic only. Nothing
+// here is a rate, a per-capita or a median across boroughs.
+function londonFigures(){
+  const E = Object.entries(DATA.boroughs), B = E.map(e=>e[1]);
   const sum = k => B.reduce((a,b)=>a+(k(b)||0),0);
-  const tot = sum(b=>b.households&&b.households.total);
-  const nightly = sum(b=>b.households&&b.households.nightly);
-  const kids = sum(b=>b.children&&b.children.under18);
-  const ooa = sum(b=>b.out_of_area&&b.out_of_area.total);
-  const sixw = sum(b=>b.bb_six_week&&b.bb_six_week.over_6_weeks);
-  const k5 = sum(b=>b.bands_children&&b.bands_children.nightly?b.bands_children.nightly[4]:0);
-  document.getElementById('summary').innerHTML = `
-    <h2>London, 31 March 2026</h2>
-    <div class="big">${fmt(tot)}<span> households in temporary accommodation</span></div>
-    <table style="margin-top:9px">
-      <tr><td class="k">in nightly-paid accommodation</td><td class="v">${fmt(nightly)} (${pc(100*nightly/tot)})</td></tr>
-      <tr><td class="k">children under 18</td><td class="v">${fmt(kids)}</td></tr>
-      <tr><td class="k">placed outside their borough</td><td class="v">${fmt(ooa)} (${pc(100*ooa/tot)})</td></tr>
-      <tr><td class="k">families 5+ years in nightly-paid</td><td class="v">${fmt(k5)}</td></tr>
-      <tr><td class="k">B&amp;B with children past 6 weeks</td><td class="v" style="color:var(--warn)">${fmt(sixw)}</td></tr>
-    </table>`;
+  const L = {
+    tot: sum(b=>b.households&&b.households.total),
+    nightly: sum(b=>b.households&&b.households.nightly),
+    leased: sum(b=>b.households&&b.households.leased),
+    kids: sum(b=>b.children&&b.children.under18),
+    ooa: sum(b=>b.out_of_area&&b.out_of_area.total),
+    sixw: sum(b=>b.bb_six_week&&b.bb_six_week.over_6_weeks),
+    k5: sum(b=>b.bands_children&&b.bands_children.nightly?b.bands_children.nightly[4]:0),
+  };
+  const stays = B.map(b=>last(b.stay&&b.stay.nightly)).filter(v=>v!=null);
+  L.stayN = stays.length; L.stayOverYear = stays.filter(v=>v>365).length;
+  L.trendN = 0; L.trendUp = 0;
+  B.forEach(b=>{ const s=b.stay&&b.stay.nightly; if(!s) return;
+    const q = Object.entries(s).filter(([,v])=>v!=null).sort();
+    if(q.length>=2){ L.trendN++; if(q[q.length-1][1]>q[0][1]) L.trendUp++; } });
+  // the one borough where a leased and a nightly rate can both be read
+  const both = E.filter(([,b])=>b.rates && b.rates.leased && b.rates.nightly &&
+    b.rates.leased.rate!=null && !b.rates.leased.mislabelled && b.rates.nightly.rate!=null);
+  L.pair = both.length===1 ? {name:both[0][1].name, leased:both[0][1].rates.leased.rate,
+                              nightly:both[0][1].rates.nightly.rate} : null;
+  L.corrob = DATA.london.leasing_gap_corroboration || null;
+  const range = get => { const v=B.map(get).filter(x=>x!=null); return v.length?[Math.min(...v),Math.max(...v),v.length]:null; };
+  L.leasedRate = range(b=>METRICS.find(m=>m.id==='rate_leased').get(b));
+  L.bbRate     = range(b=>METRICS.find(m=>m.id==='rate_bb').get(b));
+  const sw = E.filter(([,b])=>b.bb_six_week&&b.bb_six_week.over_6_weeks)
+              .sort((a,b)=>b[1].bb_six_week.over_6_weeks-a[1].bb_six_week.over_6_weeks)[0];
+  L.swTop = sw ? {slug:sw[0], name:sw[1].name, v:sw[1].bb_six_week.over_6_weeks} : null;
+  return L;
+}
+
+// The argument, in the order the findings make it: what the accommodation
+// is, how long it is used for, where it puts people, who is in it, where
+// the law is broken, and that a cheaper arrangement exists. Each step is a
+// view of the map; the sentences are filled from the data at render time.
+let STEPS = [];
+function buildCase(){
+  const L = londonFigures();
+  document.getElementById('caseHead').innerHTML =
+    `${fmt(L.tot)}<span> households in temporary accommodation in London, 31 March 2026 · ${fmt(L.kids)} children</span>`;
+  STEPS = [
+    { metric:'nightly_share',
+      html:`<b>${fmt(L.nightly)}</b> of them — <b>${pc(100*L.nightly/L.tot)}</b> — are in nightly-paid
+            accommodation: dearer than leasing, with no security of tenure, bought by the night.` },
+    { metric:'stay_nightly',
+      html:`It is priced as temporary and used for years. In <b>${L.stayOverYear} of ${L.stayN}</b> boroughs
+            the median household in nightly-paid accommodation has already been there more than a year,
+            and in <b>${L.trendUp} of the ${L.trendN}</b> with more than one quarter reported, the stay
+            has lengthened since June 2025.` },
+    { metric:'ooa',
+      html:`<b>${fmt(L.ooa)}</b> households — <b>${pc(100*L.ooa/L.tot)}</b> — are outside the
+            borough that owes them the duty.` },
+    { metric:'kids_5yr',
+      html:`<b>${fmt(L.k5)}</b> families with children have been in nightly-paid accommodation
+            for five years or more.` },
+    { metric:'sixweek', borough: L.swTop && L.swTop.slug,
+      html:`<b class="w">${fmt(L.sixw)}</b> families are in bed and breakfast beyond the six-week
+            legal limit${L.swTop?`; <b>${L.swTop.name}</b> accounts for <b>${fmt(L.swTop.v)}</b>`:''}.` },
+    { metric:'rate_leased',
+      html:`The cheaper arrangement exists.${L.pair ? ` In <b>${L.pair.name}</b>, the one borough where
+            both can be read from its published payments, a leased home costs about
+            <b>${gbp(L.pair.leased)}</b> a night against <b>${gbp(L.pair.nightly)}</b> for a nightly let.` : ''}
+            ${L.corrob ? L.corrob + ' ' : ''}Yet leasing houses only <b>${pc(100*L.leased/L.tot)}</b>
+            of London's households.` },
+  ];
+  document.getElementById('steps').innerHTML = STEPS.map((s,i)=>
+    `<li><button type="button" class="step" data-i="${i}"><span>${s.html}</span></button></li>`).join('');
+  document.querySelectorAll('.step').forEach(bn=>bn.addEventListener('click', ()=>{
+    const s = STEPS[+bn.dataset.i];
+    const mi = METRICS.findIndex(m=>m.id===s.metric);
+    cur = METRICS[mi]; document.getElementById('metric').value = mi;
+    paint();
+    if(s.borough) showDetail(s.borough);
+  }));
+  return L;
+}
+function markStep(){
+  document.querySelectorAll('.step').forEach(bn=>
+    bn.classList.toggle('on', !!STEPS[+bn.dataset.i] && STEPS[+bn.dataset.i].metric===cur.id));
+}
+
+// --- print ------------------------------------------------------------
+// Closed <details> do not print their contents, so open them for the
+// duration; the class chooses between the London page and a borough page.
+let _openedForPrint = [];
+function printView(){ window.print(); }
+window.addEventListener('beforeprint', ()=>{
+  document.body.classList.toggle('print-borough', !!openSlug);
+  _openedForPrint = [...document.querySelectorAll('#method details:not([open])')];
+  _openedForPrint.forEach(d=>d.setAttribute('open',''));
+  const url = location.href.split('#')[0] + '#metric=' + cur.id + (openSlug?'&borough='+openSlug:'');
+  document.getElementById('mapcap').textContent =
+    `Shaded by: ${cur.label} · darker is more · grey = no data` +
+    (openSlug ? ` · ${DATA.boroughs[openSlug].name} outlined` : '');
+  document.getElementById('printfoot').textContent =
+    `London Temporary Accommodation Atlas · ${openSlug ? DATA.boroughs[openSlug].name + ' · ' : ''}` +
+    `map showing: ${cur.label} · printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})} · ` +
+    `live version of this page: ${url}`;
+});
+window.addEventListener('afterprint', ()=>{
+  _openedForPrint.forEach(d=>d.removeAttribute('open')); _openedForPrint=[];
+  document.body.classList.remove('print-borough');
+});
+
+function summary(){
+  const L = buildCase();
 
   const or = DATA.london.operator_rates;
   let opHtml = '';
@@ -692,7 +864,8 @@ function showDetail(slug, moveFocus){
   ].filter(Boolean).join('');
 
   document.getElementById('detailBody').innerHTML = `
-    <header><h1>${b.name}</h1><p>Temporary accommodation, 31 March 2026</p></header>
+    <header><h1>${b.name}</h1><p>Temporary accommodation, 31 March 2026</p>
+      <div class="tools"><button type="button" onclick="printView()">Print this borough</button></div></header>
     <section>
       <div class="big">${fmt(h.total)}<span> households · ${fmt((b.children||{}).under18)} children</span></div>
       <div class="bar">${bar}</div>
@@ -717,8 +890,8 @@ function showDetail(slug, moveFocus){
     </section>
     ${rateRows?`<section><h2>What it pays per night <span style="font-weight:400;text-transform:none">— inference</span></h2>
       <table>${rateRows}</table>
-      <p class="note">Decoded from this borough's own published payments. Not
-      confirmed against an invoice.${rateSkip.length?' No usable figure for '+
+      <p class="note">${DATA.london.note} Each figure above says which route produced
+      it.${rateSkip.length?' No usable figure for '+
       rateSkip.join(', ').toLowerCase()+': this borough batches its invoices, so a payment covers many units.':''}</p></section>`
       : (rateSkip.length?`<section><h2>What it pays per night</h2><p class="note">No usable
       figure. ${b.name} batches its invoices, so a single payment covers many units and cannot
