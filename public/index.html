@@ -146,6 +146,16 @@
   .mcols{max-width:760px}
   .mcols .prov{font-size:14px;color:var(--ink2);line-height:1.55}
   .print-only{display:none}
+  details.about{margin:0}
+  details.about>summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    font:600 22px/1.25 var(--serif);color:var(--ink)}
+  details.about>summary::-webkit-details-marker{display:none}
+  details.about>summary::before{content:'+';display:inline-block;width:22px;height:22px;border:1px solid var(--ink);
+    border-radius:50%;text-align:center;font:500 16px/21px var(--sans);flex:0 0 22px;position:relative;top:-2px}
+  details.about[open]>summary::before{content:'\2212'}
+  details.about>summary small{font:400 13.5px/1.4 var(--sans);color:var(--mute);flex-basis:100%;padding-left:36px}
+  details.about h3{font:600 16px/1.3 var(--sans);margin:22px 0 6px}
+  details.about .limits .prov{font-size:14px;color:var(--ink2);line-height:1.55}
 
   @media (max-width: 900px){
     .page{padding:0 16px 40px}
@@ -168,11 +178,12 @@
     h1{font-size:16px;margin:0 0 3px} .stand{font-size:11px;line-height:1.35;margin:0 0 4px} .kicker{margin:0 0 4px}
     .byline{font-size:8.5px}
     .privacy,.tools,select,#howto,#alltable-wrap,.srclinks,.log:not(.latest),#tip,button.x,#detailPrompt,
-    .legend-lab,.breaks,.intro{display:none !important}
+    .legend-lab,.intro,#pickwrap,#shared-wrap{display:none !important}
+    .breaks{font-size:8px;margin:0}
     .hero{display:block;margin:6px 0 0}
     aside.controls{position:static;font-size:9px;margin-top:4px}
     aside.controls h2{display:none}
-    #dist{max-width:95mm;margin:2px 0}
+    #dist{max-width:70mm;margin:2px 0}
     .figtitle{font-size:11px} .figsub{font-size:8.5px;margin-bottom:3px}
     #map{height:70mm;min-height:0;background:#fff}
     body.print-borough #map{height:52mm}
@@ -183,9 +194,12 @@
     section.block>h2{font-size:12px;margin:0 0 4px}
     #detail{display:none}
     body.print-borough #detail{display:block}
-    body.print-borough #case,body.print-borough #shared-wrap,body.print-borough .method-general{display:none}
+    body.print-borough #case,body.print-borough #shared-wrap,body.print-borough .method-general,
+    body.print-borough .stand,body.print-borough aside.controls{display:none}
     #detail header h1{font-size:15px} #detail header p{font-size:9px}
-    #detailBody{column-count:2;column-gap:8mm;font-size:9.5px}
+    #detailBody{column-count:3;column-gap:6mm;font-size:9.2px}
+    #detailBody h2{font-size:8.5px;margin-bottom:3px}
+    #borough>h2{display:none}
     #detailBody section{padding:3px 0 5px;border-bottom:0}
     #detailBody table{font-size:9.5px} #detailBody td{padding:1px 0}
     #detailBody .note{font-size:8.5px;line-height:1.3}
@@ -196,7 +210,12 @@
     .step.on{background:none}
     #method .mcols{column-count:2;column-gap:8mm;column-fill:balance;break-inside:avoid;max-width:none}
     #method p,#method ol,#method h2{break-inside:avoid}
-    #method .mcols h2{margin-top:2px;font-size:10px}
+    details.about>summary{display:none}
+    #method{break-inside:auto}
+    body:not(.print-borough) #borough{display:none}
+    body.print-borough details.about>h3:first-of-type{display:none}
+    details.about .limits .prov{font-size:8.5px;line-height:1.32;color:#333;margin-top:3px}
+    details.about h3{font-size:10px;margin:4px 0 2px;text-transform:uppercase;letter-spacing:.06em;color:#555}
     .mcols .prov,#method .log,#method ol.sources{font-size:8.5px;line-height:1.32;margin-top:3px;color:#333}
     details>summary{display:none}
     .print-only{display:block;font-size:8.5px;color:#555;line-height:1.35}
@@ -215,7 +234,8 @@
   <p class="stand" id="stand"></p>
   <p class="byline">By <b>George Sheldon Grün</b>. First published 3 September 2026.
     This version <b>1.3</b>, 4 September 2026. <span id="asof"></span>. Unfunded and independent of any council or party.
-    Corrections: <a href="https://github.com/hackney-data-stories/london-ta-atlas/issues" target="_blank" rel="noopener">open an issue</a>.</p>
+    Corrections: <a href="https://github.com/hackney-data-stories/london-ta-atlas/issues" target="_blank" rel="noopener">open an issue</a>
+    · <a href="#corrections" onclick="event.preventDefault();showAbout('corrections')">corrections log</a>.</p>
   <p class="privacy">This page loads nothing from third parties and sets no cookies.</p>
   <div class="tools"><button type="button" onclick="printView()">Print this page</button>
     <button type="button" onclick="downloadAllCSV()">Download all 33 boroughs, every measure (CSV)</button></div>
@@ -286,13 +306,15 @@
   <ol class="steps" id="steps"></ol>
 </section>
 
-<section class="block prose" id="shared-wrap">
+<section class="block" id="shared-wrap">
   <h2>Why this is a shared problem</h2>
-  <div id="shared"></div>
+  <div id="shared" class="prose"></div>
 </section>
 
 <section class="block" id="method">
-  <h2>Method and confidence</h2>
+  <details class="about" id="about">
+  <summary><span>Further details about the TA Atlas</span><small>Method and confidence · what this map does not show · sources · corrections · licence</small></summary>
+  <h3>Method and confidence</h3>
   <div class="mcols">
   <p class="prov method-general">
     Household counts, length of stay, children and placements outside the
@@ -302,8 +324,8 @@
     <em>estimates</em> derived from councils' published payment files and
     have not been confirmed against an invoice.
   </p>
-  <details open>
-    <summary>What this map does not show, and why</summary>
+  <h3>What this map does not show, and why</h3>
+  <div class="limits">
     <p class="prov">
       <b>It does not rank boroughs on published spend.</b> Each borough's
       published file captures a different and unknowable share of its bill.
@@ -320,17 +342,17 @@
       <b>It does not show a rate where single payments cover several
       units.</b> Such a payment cannot be divided into a per-night rate.
     </p>
-  </details>
+  </div>
   </div>
   <div class="mcols">
-  <h2 style="margin-top:22px">Sources</h2>
+  <h3>Sources</h3>
   <ol class="sources" id="sources"></ol>
   <p class="prov srclinks" style="margin-top:6px">
     <a href="https://www.gov.uk/government/collections/homelessness-statistics" target="_blank" rel="noopener">MHCLG homelessness statistics</a> ·
     <a href="https://geoportal.statistics.gov.uk/" target="_blank" rel="noopener">ONS Open Geography Portal</a> ·
     <a href="https://github.com/hackney-data-stories/london-ta-atlas" target="_blank" rel="noopener">code and data on GitHub</a>
   </p>
-  <h2 style="margin-top:22px">Corrections and clarifications</h2>
+  <h3 id="corrections">Corrections and clarifications</h3>
   <p class="log latest"><b>Version 1.3, 4 September 2026.</b> The page has moved from a
     map with floating panels to an article layout with the map as its main figure.
     No figure has changed.</p>
@@ -358,6 +380,7 @@
     Corrections welcome as issues.
   </p>
   </div>
+  </details>
   <p class="print-only" id="printfoot"></p>
 </section>
 </div>
@@ -978,9 +1001,15 @@ function downloadAllCSV(){
 // duration; the class chooses between the London page and a borough page.
 let _openedForPrint = [];
 function printView(){ window.print(); }
+// Open the further-details block and scroll to a heading inside it,
+// without touching the hash, which carries the map's view state.
+function showAbout(id){
+  const a=document.getElementById('about'); a.open=true;
+  (document.getElementById(id)||a).scrollIntoView({behavior:'smooth', block:'start'});
+}
 window.addEventListener('beforeprint', ()=>{
   document.body.classList.toggle('print-borough', !!openSlug);
-  _openedForPrint = [...document.querySelectorAll('#method details:not([open])')];
+  _openedForPrint = [...document.querySelectorAll('#method details:not([open]), #about:not([open])')];
   _openedForPrint.forEach(d=>d.setAttribute('open',''));
   const url = siteURL().replace(/\/?$/, '/') + '#metric=' + cur.id + (openSlug?'&borough='+openSlug:'');
   document.getElementById('mapcap').textContent =
