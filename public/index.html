@@ -115,6 +115,23 @@
   #detailBody header{column-span:all}
   #detailBody section{break-inside:avoid;padding:12px 0 14px;border-bottom:1px solid var(--line)}
   .bar{height:10px;background:#eee;border-radius:5px;overflow:hidden;display:flex;margin:8px 0 4px}
+  .sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+  .pct{color:var(--mute);font-weight:400}
+  table.tier td{vertical-align:top}
+  table.tier td.v{font-weight:600;white-space:nowrap}
+  table.tier td.k{width:44%}
+  #ldnTier table.tier td.k{width:30%}
+  #ldnTier table.tier td.v{white-space:normal}
+  #ldnTier table.tier .pair{white-space:nowrap}
+  table.tier .pair{white-space:nowrap}
+  table.tier .pair i{font-style:normal;color:var(--mute);font-weight:400}
+  table.tier .st{font-weight:400;color:var(--mute);font-style:italic;white-space:normal}
+  table.tier td.prev{font-size:12px;color:var(--mute);font-weight:400;padding-top:0}
+  .twocol{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px 40px;align-items:start}
+  .twocol>div{min-width:0}
+  .twocol>div>h3{font:650 12px/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--mute);margin:0 0 8px}
+  .lede{font:400 17px/1.5 var(--serif);color:var(--ink);margin:0 0 10px;max-width:46em}
+  @media (max-width:900px){ .twocol{grid-template-columns:minmax(0,1fr)} table.tier .pair{white-space:normal} }
   .bar b{display:block;height:100%}
   .flag{display:inline-block;padding:3px 9px;border-radius:12px;font-size:12px;font-weight:650;margin:0 6px 6px 0}
   .flag.ok{background:#e6f2ee;color:var(--accent)}
@@ -171,7 +188,12 @@
     h1{font-size:16px;margin:0 0 3px} .stand{font-size:11px;line-height:1.35;margin:0 0 4px} .kicker{margin:0 0 4px}
     .byline{font-size:8.5px}
     .privacy,.tools,select,#howto,#alltable-wrap,.srclinks,.log:not(.latest),#tip,button.x,#detailPrompt,
-    .legend-lab,.intro,#pickwrap,#shared-wrap,#capital,#operators{display:none !important}
+    .legend-lab,.intro,#pickwrap,#shared-wrap,#capital,#operators,#control-wrap{display:none !important}
+    #detailBody table.tier .note,#detailBody table.tier td.prev,#detailBody table.tier tr:has(td.prev){display:none}
+    #detailBody table.tier th{font-size:8px;line-height:1.2}
+    #detailBody table.tier td.k{width:auto}
+    body.print-borough #method{break-before:page}
+    #detailBody section:has(h2 .superseded){display:none}
     .breaks{font-size:8px;margin:0}
     .hero{display:block;margin:6px 0 0}
     aside.controls{position:static;font-size:9px;margin-top:4px}
@@ -198,7 +220,8 @@
     #detailBody .note{font-size:8.5px;line-height:1.3}
     .big{font-size:16px} .big span{font-size:9px}
     #method .mcols{column-count:2;column-gap:8mm;column-fill:balance;break-inside:avoid;max-width:none}
-    #method p,#method ol,#method h2{break-inside:avoid}
+    #method p,#method ol li,#method h2{break-inside:avoid}
+    #method ol.sources{break-inside:avoid}
     details.about>summary{display:none}
     #method{break-inside:auto}
     body:not(.print-borough) #borough{display:none}
@@ -222,7 +245,7 @@
   <h1>London Temporary Accommodation Atlas</h1>
   <p class="stand" id="stand"></p>
   <p class="byline">By <b>George Sheldon Grün</b>. First published 3 September 2026.
-    This version <b>1.4</b>, 6 September 2026. <span id="asof"></span>. Unfunded and independent of any council or party.
+    This version <b>1.5</b>, 17 October 2026. <span id="asof"></span>. Unfunded and independent of any council or party.
     Corrections: <a href="https://github.com/hackney-data-stories/london-ta-atlas/issues" target="_blank" rel="noopener">open an issue</a>
     · <a href="#corrections" onclick="event.preventDefault();showAbout('corrections')">corrections log</a>.</p>
   <p class="privacy">This page loads nothing from third parties and sets no cookies.</p>
@@ -286,6 +309,19 @@
   <p id="detailPrompt">Select a borough on the map, or from the list beside it, and its full figures appear here.</p>
   <div id="detail" role="region" aria-label="Selected borough" tabindex="-1">
     <div id="detailBody"></div>
+  </div>
+</section>
+
+<section class="block" id="control-wrap">
+  <h2>Who holds London’s temporary accommodation, and what each tier costs</h2>
+  <p class="lede" id="ldnSummary"></p>
+  <div class="twocol">
+    <div><h3>Households by who holds the home, 31 March 2026</h3><div id="ldnControl"></div></div>
+    <div><h3>Cost per household per night, from councils’ accounts</h3><div id="ldnTier"></div>
+      <p class="note" id="ldnLabels"></p>
+      <p class="note" id="ldnCaveat"></p>
+      <p class="note" id="ldnCorrob"></p>
+      <p class="note" id="ldnConf"></p></div>
   </div>
 </section>
 
@@ -370,6 +406,13 @@
       <b>It does not show a rate where single payments cover several
       units.</b> Such a payment cannot be divided into a per-night rate.
     </p>
+    <p class="prov" id="disagree"></p>
+    <p class="prov">
+      <b>Net figures exclude the housing benefit subsidy shortfall.</b> The
+      shortfall sits in each council’s benefits budget and is not split by
+      category anywhere public, so the net cost to a council is higher than the
+      net figures here.
+    </p>
   </div>
   </div>
   <div class="mcols">
@@ -381,7 +424,17 @@
     <a href="https://github.com/hackney-data-stories/london-ta-atlas" target="_blank" rel="noopener">code and data on GitHub</a>
   </p>
   <h3 id="corrections">Corrections and clarifications</h3>
-  <p class="log latest"><b>Version 1.4, 6 September 2026.</b> The narrated summary
+  <p class="log latest"><b>Version 1.5, 17 October 2026.</b> Spend now comes from each
+    council’s Revenue Outturn (RO4), gross and net by category for 2024-25 and 2023-24;
+    the payment-file total is kept for rates and operators but is no longer the spend
+    figure. A cost per household per night is shown where a council’s accounts and its
+    household return agree, and pooled across all purchased accommodation for every
+    borough with a return. Each borough and London now show who holds the
+    accommodation: bought by the night, held on a lease, or owned. The leased rate from
+    payment files is described as rent paid to landlords, not the full cost of a leased
+    home. Havering’s £24,000-a-year gap is described as the widest in London, about
+    double the average, not the typical one. Three measures added.</p>
+  <p class="log"><b>Version 1.4, 6 September 2026.</b> The narrated summary
     ("The case, in six views") has been removed. A section on Capital Letters, the
     boroughs' shared procurement company of 2019 to 2025, has been added; its figures
     are quoted from the LSE review, not derived from this dataset. Method, sources and
@@ -426,7 +479,7 @@ const RAMP_BAD  = ['#fde9d4','#fbd0a5','#f7b076','#ee8a51','#dd6337','#bd4326','
 const RAMP_GOOD = ['#e6efe9','#c2ddd0','#99c7b3','#6cae94','#438f76','#256e59','#0f5040'];
 const fmt = n => n==null ? '—' : n.toLocaleString('en-GB',{maximumFractionDigits:0});
 const pc  = n => n==null ? '—' : n.toFixed(1).replace(/\.0$/,'')+'%';
-const gbp = n => n==null ? '—' : '£'+n.toLocaleString('en-GB',{maximumFractionDigits:0});
+const gbp = n => n==null ? '—' : (n<0?'−£':'£')+Math.abs(n).toLocaleString('en-GB',{maximumFractionDigits:0});
 
 const METRICS = [
   { id:'stay_nightly', label:'Median stay in nightly-paid accommodation (days)',
@@ -451,6 +504,9 @@ const METRICS = [
     unit:'%', prov:'Official statistics: MHCLG table TA1, 31 March 2026. Leasing is the cheaper arrangement, so a higher share is better.',
     get:b => b.households && b.households.total ? 100*b.households.leased/b.households.total : null,
     fmt:pc, good:true },
+  { id:'held_owned_share', label:'Share of households in homes held on a lease or owned',
+    unit:'%', prov:'Official statistics: MHCLG table TA1, 31 March 2026. Leased by the council or a registered provider, or council and housing association stock. The rest is bought by the night, in hostels or other. A higher share is better.',
+    get:b => b.control ? b.control.held_or_owned_share : null, fmt:pc, good:true },
   { id:'ta_total', label:'Households in temporary accommodation',
     unit:'households', prov:'Official statistics: MHCLG table TA1, 31 March 2026.',
     get:b => b.households && b.households.total },
@@ -474,6 +530,12 @@ const METRICS = [
     unit:'£/night', prov:'Estimate: median monthly payment divided by 30.44. Not confirmed against an invoice. Blank where no usable figure exists.',
     get:b => (b.rates && b.rates.leased && !b.rates.leased.mislabelled) ? b.rates.leased.rate : null,
     fmt:gbp, why:b => rateWhy(b,'leased') },
+  { id:'cost_all_gross', label:'Cost per household per night, all purchased temporary accommodation (gross, 2024-25)',
+    unit:'£/night', prov:'Official statistics: each council’s Revenue Outturn (RO4) for 2024-25 divided by its average households across the year’s TA1 returns, pooled across all purchased accommodation and excluding council and housing association stock. Gross, before rent recovered. Three boroughs filed no household return.',
+    get:b => b.statutory && b.statutory.all_purchased ? b.statutory.all_purchased.per_night_gross : null, fmt:gbp },
+  { id:'cost_all_net', label:'Cost per household per night, all purchased temporary accommodation (net, 2024-25)',
+    unit:'£/night', prov:'Official statistics: as the gross figure, after rent and charges recovered. Excludes the housing benefit subsidy shortfall, which is not split by category anywhere public. Three boroughs filed no household return.',
+    get:b => b.statutory && b.statutory.all_purchased ? b.statutory.all_purchased.per_night_net : null, fmt:gbp },
 ];
 
 // Why a rate layer is blank for a borough. The contract distinguishes a
@@ -859,7 +921,9 @@ function buildCase(){
   const L = londonFigures();
   document.getElementById('stand').textContent =
     `${fmt(L.tot)} households and ${fmt(L.kids)} children were in temporary accommodation across ` +
-    `London's 33 boroughs at 31 March 2026. Choose a measure to map it, and a borough for its full figures.`;
+    `London's 33 boroughs at 31 March 2026.` +
+    (DATA.london.control ? ` ${pc(DATA.london.control.share.bought_by_night)} of them were in accommodation bought by the night and ${pc(DATA.london.control.held_or_owned_share)} in homes held on a lease or owned.` : '') +
+    ` Choose a measure to map it, and a borough for its full figures.`;
   return L;
 }
 
@@ -899,7 +963,9 @@ const SRC = {
   bands:'MHCLG table TA4', bands_children:'MHCLG table TA4c', children:'MHCLG table TA8',
   out_of_area:'MHCLG table TA9', bb_six_week:'MHCLG table TA1; Suitability of Accommodation Order 2003, art. 4',
   spend:"borough's published payments; see note", rates:"estimate derived from borough's published payments; not confirmed against an invoice",
-  adam:'Access provider site; Find a Tender notices'
+  adam:'Access provider site; Find a Tender notices',
+  statutory:'MHCLG Revenue Outturn RO4 (spend); MHCLG table TA1 average households across the year',
+  control:'MHCLG table TA1, latest quarter'
 };
 function csvCell(v){ if(v==null) return ''; const s=String(v); return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
 // A downloaded file circulates detached from every caveat on the page, so
@@ -965,6 +1031,14 @@ function boroughRows(slug){
     row('rates',arr+': n_payments','',r.n_payments); row('rates',arr+': decode_share','',r.decode_share);
     row('rates',arr+': median_payment','',r.median_payment); row('rates',arr+': priced_nightly','',r.priced_nightly); });
   Object.entries(b.adam||{}).forEach(([k,v])=>row('adam',k,'',v));
+  const st=b.statutory||{};
+  Object.entries(st.by_type||{}).forEach(([t,v])=>{
+    ['gross','income','net','households','quarters_reported','per_night_gross','per_night_net','status'].forEach(k=>row('statutory',t+': '+k,st.year,v[k],[v.basis,v.caveat].filter(Boolean).join(' | ')));
+    Object.entries(v.previous_year||{}).forEach(([k,x])=>row('statutory',t+': '+k,st.previous_year,x,v.basis)); });
+  if(st.all_purchased){ ['gross','net','households','per_night_gross','per_night_net'].forEach(k=>row('statutory','all purchased: '+k,st.year,st.all_purchased[k],st.all_purchased.basis));
+    Object.entries(st.all_purchased.previous_year||{}).forEach(([k,x])=>row('statutory','all purchased: '+k,st.previous_year,x,st.all_purchased.basis)); }
+  if(b.control){ Object.entries(b.control.households||{}).forEach(([k,v])=>row('control',k,latest,v,b.control.note));
+    row('control','held_or_owned_share',latest,b.control.held_or_owned_share,b.control.note); }
   (b.top_payees||[]).forEach((p,i)=>row('spend','top payee '+(i+1)+': '+p.name,'',p.amount,b.spend&&b.spend.confidence));
   return R;
 }
@@ -1033,6 +1107,7 @@ function drawOperators(){
 function summary(){
   const L = buildCase();
   drawOperators();
+  londonStatutory();
 
   const or = DATA.london.operator_rates;
   let opHtml = '';
@@ -1053,8 +1128,9 @@ function summary(){
     published payments.</p>
     <p class="note"><b>Bed and breakfast, per night</b>, same published label:
     ${rb.map(([s,v])=>`${title(s)} <b>${gbp(v)}</b>`).join(' · ')}</p>
-    <p class="note"><b>A leased home, per night</b>, the cheaper arrangement:
-    ${rl.map(([s,v])=>`${title(s)} <b>${gbp(v)}</b>`).join(' · ')}</p>
+    <p class="note"><b>Rent paid to landlords for a leased home, per night</b>:
+    ${rl.map(([s,v])=>`${title(s)} <b>${gbp(v)}</b>`).join(' · ')}.
+    ${((Object.values(DATA.boroughs).map(b=>b.rates&&b.rates.leased&&b.rates.leased.note).find(Boolean))||'').replace(/^Rent paid to landlords, not the full cost of a leased home\.\s*/,'This is ')}</p>
     ${opHtml ? '<p class="note" style="margin-bottom:0"><b>The one operator whose price can be compared between boroughs on a matching label:</b></p>'+opHtml : ''}
     <p class="note"><b>Four boroughs already share a procurement system.</b>
     Waltham Forest, Redbridge, Enfield and Newham run one dynamic purchasing
@@ -1062,6 +1138,92 @@ function summary(){
 }
 
 function title(s){ return (DATA.boroughs[s]||{}).name || s; }
+
+// Ownership and control: who holds the accommodation. Warm = bought by the
+// night; greens = held on a lease or owned; the household-mix bar uses the
+// same meanings. Shares come from the dataset; nothing is recomputed.
+const CTRL = [['bought_by_night','Bought by the night','#bd4326'],
+              ['held_on_lease','Held on a lease','#74b09d'],
+              ['owned','Owned','#12503f'],
+              ['hostels','Hostels (not known)','#c9a227'],
+              ['other','Other','#ddd']];
+function controlBlock(c, lead){
+  if(!c || !c.total) return '';
+  const bar = CTRL.map(([k,,col])=> c.households[k] ? `<b style="width:${c.share[k]}%;background:${col}"></b>` : '').join('');
+  const rows = CTRL.filter(([k])=>c.households[k]).map(([k,lab,col])=>
+    `<tr><td class="k"><span class="sw" style="background:${col}"></span>${lab}</td>` +
+    `<td class="v">${fmt(c.households[k])} <span class="pct">${pc(c.share[k])}</span></td></tr>`).join('');
+  return `<div class="big">${pc(c.held_or_owned_share)}<span> ${lead}</span></div>
+    <div class="bar">${bar}</div><table>${rows}</table><p class="note">${c.note}</p>`;
+}
+const TIER = {nightly:'Nightly-paid', leased:'Leased', bb:'Bed and breakfast', hostel:'Hostels',
+              la_ha:'Council or housing association stock', other:'Other'};
+const pound = v => v==null ? '—' : Math.abs(v)>=1e9 ? (v<0?'−£':'£')+(Math.abs(v)/1e9).toFixed(2)+'bn'
+                 : Math.abs(v)>=1e6 ? (v<0?'−£':'£')+(Math.abs(v)/1e6).toFixed(1)+'m' : gbp(v);
+const pair  = (a,b,f) => `<span class="pair">${f(a)} <i>/ ${f(b)}</i></span>`;
+
+// Cost by tier for one borough, from its Revenue Outturn and household
+// return. A tier is costed only where the dataset marks it usable; the
+// status string is the dataset's own, with its basis sentence as the title.
+function tierTable(st){
+  if(!st || !st.by_type) return '';
+  const order = ['nightly','leased','bb','hostel','la_ha'];
+  let rows = '', caveat = '';
+  order.forEach(t=>{
+    const v = st.by_type[t]; if(!v) return;
+    if(!v.gross && !v.households && !v.usable) return;      // nothing filed on either side
+    if(v.status==='immaterial' && !v.gross) return;         // a zero line says nothing
+    const prev = v.previous_year||{};
+    if(v.caveat) caveat = v.caveat;
+    rows += `<tr title="${(v.basis||'').replace(/"/g,'&quot;')}"><td class="k">${TIER[t]}` +
+      (!v.usable && t!=='la_ha' && v.status!=='immaterial' && st.household_return ? `<div class="note" style="margin-top:2px">${v.basis||''}</div>` : '') +
+      `</td>` +
+      `<td class="v">${v.gross!=null && t!=='la_ha' ? pair(v.gross, v.net, pound) : '—'}</td>` +
+      `<td class="v">${v.usable ? pair(v.per_night_gross, v.per_night_net, gbp) : `<span class="st">${v.status||'not usable'}</span>`}</td></tr>`;
+    if(v.usable && prev.per_night_gross!=null)
+      rows += `<tr><td class="prev">${st.previous_year}</td><td class="prev">${pair(prev.gross, prev.net, pound)}</td><td class="prev">${pair(prev.per_night_gross, prev.per_night_net, gbp)}</td></tr>`;
+  });
+  const ap = st.all_purchased;
+  if(ap){
+    rows += `<tr style="border-top:1px solid var(--ink)" title="${(ap.basis||'').replace(/"/g,'&quot;')}"><td class="k"><b>All purchased temporary accommodation</b><div class="note" style="margin-top:2px">${ap.basis||''}</div></td>` +
+      `<td class="v">${pair(ap.gross, ap.net, pound)}</td><td class="v">${pair(ap.per_night_gross, ap.per_night_net, gbp)}</td></tr>`;
+    if(ap.previous_year && ap.previous_year.per_night_gross!=null)
+      rows += `<tr><td class="prev">${st.previous_year}</td><td class="prev">${pair(ap.previous_year.gross, ap.previous_year.net, pound)}</td><td class="prev">${pair(ap.previous_year.per_night_gross, ap.previous_year.per_night_net, gbp)}</td></tr>`;
+  }
+  return `<table class="tier"><tr><th style="text-align:left;font-weight:600;font-size:12px;color:var(--mute)">Tier</th>` +
+    `<th style="text-align:right;font-weight:600;font-size:12px;color:var(--mute)">Spend ${st.year}<br><span style="font-weight:400">gross / net</span></th>` +
+    `<th style="text-align:right;font-weight:600;font-size:12px;color:var(--mute)">Per household-night<br><span style="font-weight:400">gross / net</span></th></tr>${rows}</table>` +
+    (caveat ? `<p class="note"><b>Leased:</b> ${caveat}</p>` : '');
+}
+
+// London: pooled cost by tier for both years, the gap, and the leasing case.
+function londonStatutory(){
+  const S = DATA.london.statutory; if(!S) return;
+  const yrs = [S.year, S.previous_year];
+  let rows = '';
+  ['nightly','leased','bb','hostel'].forEach(t=>{
+    const v = S.by_type[t]; if(!v) return;
+    rows += `<tr><td class="k">${TIER[t]}</td>` +
+      yrs.map(y=>{ const d=v[y]; return `<td class="v">${d ? pair(d.per_night_gross, d.per_night_net, gbp) + `<div class="note" style="margin-top:0">${d.boroughs} boroughs</div>` : '—'}</td>`; }).join('') + '</tr>';
+  });
+  const ap = S.all_purchased;
+  rows += `<tr style="border-top:1px solid var(--ink)"><td class="k"><b>All purchased temporary accommodation</b></td>` +
+    yrs.map(y=>{ const d=ap[y]; return `<td class="v">${d ? pair(d.per_night_gross, d.per_night_net, gbp) + `<div class="note" style="margin-top:0">${d.boroughs} boroughs · ${pound(d.gross)} gross</div>` : '—'}</td>`; }).join('') + '</tr>';
+  const g = S.nightly_to_leased_gap;
+  rows += `<tr><td class="k">Nightly-paid less leased, per household-night</td>` +
+    yrs.map(y=>{ const d=g[y]; return `<td class="v">${d ? pair(d.gross_per_night, d.net_per_night, gbp) + `<div class="note" style="margin-top:0">${d.boroughs} boroughs · about ${gbp(d.net_per_year)} a year net</div>` : '—'}</td>`; }).join('') + '</tr>';
+  document.getElementById('ldnTier').innerHTML =
+    `<table class="tier"><tr><th style="text-align:left;font-weight:600;font-size:12px;color:var(--mute)">Per household-night, gross / net</th>` +
+    yrs.map(y=>`<th style="text-align:right;font-weight:600;font-size:12px;color:var(--mute)">${y}</th>`).join('') + `</tr>${rows}</table>`;
+  document.getElementById('ldnLabels').textContent = 'MHCLG categories: ' +
+    ['nightly','leased','bb','hostel'].filter(t=>S.by_type[t]).map(t=>`${TIER[t].toLowerCase()} is ‘${S.by_type[t].label}’`).join('; ') + '.';
+  document.getElementById('ldnSummary').textContent = S.summary || '';
+  document.getElementById('ldnCaveat').textContent = S.leased_caveat || '';
+  document.getElementById('ldnCorrob').textContent = DATA.london.leasing_gap_corroboration || '';
+  document.getElementById('ldnConf').textContent = [S.disagreements, S.confidence].filter(Boolean).join(' ');
+  document.getElementById('ldnControl').innerHTML = controlBlock(DATA.london.control, 'of London’s households are in homes held on a lease or owned');
+  const dis = document.getElementById('disagree'); if(dis && S.disagreements) dis.innerHTML = '<b>It shows a cost by category only where a council’s accounts and its household return agree.</b> ' + S.disagreements;
+}
 
 // A user action: open the borough's figures and bring them into view.
 function revealDetail(slug, moveFocus){
@@ -1093,9 +1255,9 @@ function showDetail(slug, moveFocus){
   const days = v => fmt(v)+' days';
   const qk = stayN ? Object.keys(stayN).sort() : [];
   const first = qk.length? stayN[qk[0]] : null, lastv = qk.length? stayN[qk[qk.length-1]] : null;
-  const mixOrder = [['nightly','Nightly-paid','#12503f'],['leased','Leased','#74b09d'],
-                    ['bb','B&amp;B','#a8322d'],['hostel','Hostels','#c9a227'],
-                    ['la_ha','Council/HA stock','#9aa5a0'],['other','Other','#ddd']];
+  const mixOrder = [['nightly','Nightly-paid','#bd4326'],['bb','B&amp;B','#8f2a19'],
+                    ['leased','Leased','#74b09d'],['la_ha','Council/HA stock','#12503f'],
+                    ['hostel','Hostels','#c9a227'],['other','Other','#ddd']];
   const totalHH = h.total||0;
   const bar = mixOrder.map(([k,,c])=> h[k] ? `<b style="width:${100*h[k]/totalHH}%;background:${c}"></b>`:'').join('');
   const mixRows = mixOrder.filter(([k])=>h[k]).map(([k,lab,c])=>
@@ -1114,6 +1276,7 @@ function showDetail(slug, moveFocus){
       ' <span class="flag no" style="margin:0">priced per night, not a lease</span>':''}` +
       `<div class="note" style="margin-top:1px">${v.basis} · ${fmt(v.n_payments)} payments` +
       (v.exclusion_reason ? `<br>${v.exclusion_reason[0].toUpperCase()+v.exclusion_reason.slice(1)}.` : '') +
+      (v.note ? `<br>${v.note}` : '') +
       `</div></td>` +
       `<td class="v">${gbp(v.rate)}</td></tr>`;
   }
@@ -1141,6 +1304,12 @@ function showDetail(slug, moveFocus){
         <tr><td class="k">of which nightly-paid</td><td class="v">${spark(trend('nightly'),Q,fmt,'Households in nightly-paid accommodation')}${fmt(h.nightly)}</td></tr>
       </table>` : ''}
     </section>
+    ${b.control ? `<section><h2>Who holds the accommodation</h2>${controlBlock(b.control, 'of households in homes held on a lease or owned')}</section>` : ''}
+    ${b.statutory ? `<section><h2>What each tier costs, ${b.statutory.year}</h2>
+      ${b.statutory.household_return ? '' : `<p class="note" style="margin:0 0 6px">Not reported: ${b.name} filed no household return in ${b.statutory.year}, so no cost per household can be shown. Spend is from its accounts.</p>`}
+      ${b.statutory.household_return && b.statutory.split_issue ? `<p class="note" style="margin:0 0 6px">The council’s accounts and its household return disagree on ${b.statutory.split_issue.replace(/\bbb\b/,'bed and breakfast').replace(/\bnightly\b/,'nightly-paid')}, so those tiers are not costed separately; the pooled figure covers them.</p>` : ''}
+      ${tierTable(b.statutory)}
+      <p class="note">${b.statutory.confidence||''}</p></section>` : ''}
     ${flags?`<section>${flags}</section>`:''}
     <section>
       <h2>How long people stay</h2>
@@ -1168,11 +1337,12 @@ function showDetail(slug, moveFocus){
       figure. ${b.name} batches its invoices, so a single payment covers many units and cannot
       be divided into a nightly rate.</p></section>`:'')}
     <section>
-      <h2>Published payments</h2>
+      <h2>Published payment files <span class="${b.spend.superseded_by?'superseded':''}" style="font-weight:400;text-transform:none">(${b.spend.superseded_by ? 'rates and operators only' : 'spend'})</span></h2>
       <table>
         <tr><td class="k">Payments published, ${b.spend.period||'period not known'}</td><td class="v">${b.spend.total_in_period!=null?gbp(b.spend.total_in_period):'—'}</td></tr>
         ${b.spend.redacted_share?`<tr><td class="k">Paid to unnamed recipients</td><td class="v">${pc(b.spend.redacted_share)}</td></tr>`:''}
       </table>
+      ${b.spend.note ? `<p class="note">${b.spend.note}</p>` : ''}
       <p class="note">${b.spend.months_in_period?`A sum over ${b.spend.months_in_period} month${b.spend.months_in_period===1?'':'s'} of published files, not an annual figure. `:''}${b.spend.confidence}</p>
     </section>`;
   const dp = document.getElementById('detail');
